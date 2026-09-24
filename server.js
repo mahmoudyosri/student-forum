@@ -12,8 +12,8 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // 1. تحديد مسار التخزين (دائم على Render أو محلي على جهازك)
-const DATA_DIR = process.env.RENDER ? '/data' : __dirname;
-
+// الكود الجديد الصحيح:
+const DATA_DIR = __dirname;
 // 2. إنشاء مجلد المرفقات داخل مسار التخزين
 const uploadDir = path.join(DATA_DIR, 'uploads');
 if (!fs.existsSync(uploadDir)) {
