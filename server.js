@@ -11,10 +11,13 @@ const bcrypt = require('bcryptjs');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// 1. إعداد المجلدات والملفات الاستاتيكية
-const uploadDir = path.join(__dirname, 'uploads');
+// 1. تحديد مسار التخزين (دائم على Render أو محلي على جهازك)
+const DATA_DIR = process.env.RENDER ? '/data' : __dirname;
+
+// 2. إنشاء مجلد المرفقات داخل مسار التخزين
+const uploadDir = path.join(DATA_DIR, 'uploads');
 if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir);
+    fs.mkdirSync(uploadDir, { recursive: true });
 }
 
 const storage = multer.diskStorage({
@@ -47,23 +50,25 @@ const upload = multer({
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
+
+// ربط مجلد المرفقات والملفات الاستاتيكية
 app.use('/uploads', express.static(uploadDir));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/', express.static(__dirname));
 app.set('view engine', 'ejs');
 
 app.use(session({
-    secret: 'institute-forum-secure-2026',
+    secret: process.env.SESSION_SECRET || 'institute-forum-secure-2026',
     resave: false,
     saveUninitialized: false
 }));
 
 let db;
 
-// 2. تهيئة قاعدة البيانات SQLite
+// 3. تهيئة قاعدة البيانات SQLite (في المسار الدائم)
 async function initDB() {
     db = await open({
-        filename: './database.sqlite',
+        filename: path.join(DATA_DIR, 'database.sqlite'),
         driver: sqlite3.Database
     });
 
@@ -120,10 +125,10 @@ async function initDB() {
         await db.run('INSERT INTO users (national_id, display_name, role) VALUES (?, ?, ?)', ['admin123', 'إدارة المعهد', 'admin']);
     }
 
-    console.log('⚡ تم تهيئة قاعدة البيانات والهيكل بنجاح.');
+    console.log(`⚡ تم تهيئة قاعدة البيانات بنجاح في المسار: ${path.join(DATA_DIR, 'database.sqlite')}`);
 }
 
-// Middlewares للأمان والصلاحيات
+// Middlewares للتحقق من الصلاحيات
 function isAuthenticated(req, res, next) {
     if (req.session.user) return next();
     res.redirect('/login');
@@ -287,7 +292,7 @@ app.post('/posts/:id/comments', isAuthenticated, async (req, res) => {
 
 // --- مسارات لوحة التحكم للأدمن ---
 
-// 6. لوحة التحكم الرئيسية
+// 6. الصفحة الرئيسية للوحة التحكم
 app.get('/admin', isAdmin, async (req, res) => {
     const pendingPosts = await db.all(`
         SELECT posts.*, users.display_name, users.national_id 
@@ -318,7 +323,7 @@ app.get('/admin', isAdmin, async (req, res) => {
     res.render('admin', { user: req.session.user, pendingPosts, allPosts, studentsCount: studentsCount.count });
 });
 
-// 7. صفحة إدارة حسابات الطلاب مع دعم البحث (بالاسم أو الرقم القومي)
+// 7. صفحة إدارة حسابات الطلاب مع البحث (بالاسم أو الرقم القومي)
 app.get('/admin/students', isAdmin, async (req, res) => {
     const searchQuery = req.query.search ? `%${req.query.search.trim()}%` : null;
 
@@ -346,7 +351,7 @@ app.get('/admin/students', isAdmin, async (req, res) => {
     });
 });
 
-// 8. تعيين أو تصفير كلمة مرور طالب من قبل الأدمن
+// 8. تعيين أو تصفير كلمة مرور طالب
 app.post('/admin/reset-password/:national_id', isAdmin, async (req, res) => {
     const { new_password } = req.body;
     const nationalId = req.params.national_id;
@@ -379,7 +384,7 @@ app.post('/admin/toggle-pin/:id', isAdmin, async (req, res) => {
     res.redirect('/admin');
 });
 
-// 10. الموافقة وحذف المنشورات والتعليقات
+// 10. قبول/حذف منشورات وتصريحات
 app.post('/admin/approve/:id', isAdmin, async (req, res) => {
     await db.run("UPDATE posts SET media_status = 'approved' WHERE id = ?", [req.params.id]);
     res.redirect('/admin');
@@ -396,7 +401,7 @@ app.post('/admin/delete-comment/:id', isAdmin, async (req, res) => {
     res.redirect('/admin');
 });
 
-// 11. إضافة طالب يدوياً واستيراد إكسيل
+// 11. إضافة طالب يدوياً أو استيراد ملف إكسيل
 app.post('/admin/add-student', isAdmin, async (req, res) => {
     const { national_id, full_name } = req.body;
     if (national_id && full_name) {
@@ -438,5 +443,5 @@ app.get('/logout', (req, res) => {
 
 // تشغيل السيرفر
 initDB().then(() => {
-    app.listen(PORT, () => console.log(`🚀 السيرفر يعمل بكفاءة على: http://localhost:${PORT}`));
+    app.listen(PORT, () => console.log(`🚀 السيرفر يعمل بكفاءة على المنفذ: ${PORT}`));
 });
