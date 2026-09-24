@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إدارة حسابات الطلاب | لوحة التحكم</title>
+    <style>
+        :root { --primary: #0f172a; --accent: #2563eb; --bg: #f8fafc; --border: #cbd5e1; }
+        * { box-sizing: border-box; font-family: 'Segoe UI', system-ui, sans-serif; margin: 0; padding: 0; }
+        body { background: var(--bg); color: #1e293b; padding-bottom: 50px; }
+        .navbar { background: var(--primary); color: white; padding: 0.85rem 2rem; display: flex; justify-content: space-between; align-items: center; }
+        .container { max-width: 1000px; margin: 2rem auto; padding: 0 1rem; }
+        .card { background: white; border-radius: 12px; border: 1px solid #e2e8f0; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.03); }
+        .search-box { display: flex; gap: 10px; margin-bottom: 1.5rem; }
+        .search-box input { flex: 1; padding: 0.6rem 1rem; border: 1px solid var(--border); border-radius: 8px; font-size: 0.95rem; }
+        .search-box button { background: var(--accent); color: white; border: none; padding: 0.6rem 1.2rem; border-radius: 8px; cursor: pointer; font-weight: 600; }
+        .search-box a { background: #64748b; color: white; border: none; padding: 0.6rem 1rem; border-radius: 8px; text-decoration: none; font-size: 0.9rem; display: flex; align-items: center; }
+        table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
+        th, td { text-align: right; padding: 0.75rem 1rem; border-bottom: 1px solid #e2e8f0; font-size: 0.9rem; }
+        th { background: #f1f5f9; color: #334155; }
+        .status-badge { padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 700; }
+        .status-active { background: #dcfce7; color: #15803d; }
+        .status-pending { background: #fef3c7; color: #b45309; }
+        .action-form { display: flex; gap: 6px; align-items: center; }
+        .action-form input { padding: 0.35rem 0.6rem; border: 1px solid var(--border); border-radius: 6px; font-size: 0.8rem; width: 140px; }
+        .btn { border: none; padding: 0.35rem 0.75rem; border-radius: 6px; font-weight: 600; cursor: pointer; color: white; font-size: 0.8rem; }
+        .btn-accent { background: var(--accent); }
+        .btn-danger { background: #dc2626; }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <h2>👥 قائمة الطلاب وحساباتهم</h2>
+        <div>
+            <a href="/admin" style="color:white; text-decoration:none; margin-left:15px;">🔙 العودة للوحة التحكم</a>
+            <a href="/logout" style="color:#f87171; text-decoration:none;">خروج</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="card">
+            <!-- شريط البحث بالاسم أو الرقم القومي -->
+            <form action="/admin/students" method="GET" class="search-box">
+                <input type="text" name="search" placeholder="ابحث باسم الطالب أو بالرقم القومي..." value="<%= search %>">
+                <button type="submit">بحث</button>
+                <% if (search) { %>
+                    <a href="/admin/students">إلغاء البحث</a>
+                <% } %>
+            </form>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>الرقم القومي</th>
+                        <th>اسم الطالب</th>
+                        <th>حالة كلمة المرور</th>
+                        <th>إعادة تعيين / تغيير كلمة المرور</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% if (students.length === 0) { %>
+                        <tr>
+                            <td colspan="4" style="text-align: center; padding: 2rem; color: #64748b;">لا توجد نتائج تطابق البحث.</td>
+                        </tr>
+                    <% } %>
+                    <% students.forEach(student => { %>
+                        <tr>
+                            <td><b><%= student.national_id %></b></td>
+                            <td><%= student.full_name %></td>
+                            <td>
+                                <% if (student.password) { %>
+                                    <span class="status-badge status-active">مُفعلة (مشفرة)</span>
+                                <% } else { %>
+                                    <span class="status-badge status-pending">لم تُنشأ بعد</span>
+                                <% } %>
+                            </td>
+                            <td>
+                                <form action="/admin/reset-password/<%= student.national_id %>" method="POST" class="action-form">
+                                    <input type="text" name="new_password" placeholder="كلمة جديدة (اختياري)">
+                                    <button type="submit" class="btn btn-accent">تعيين</button>
+                                    <button type="submit" onclick="this.form.new_password.value=''" class="btn btn-danger" title="تصفير ليُنشئها الطالب بنفسه">تصفير الحساب</button>
+                                </form>
+                            </td>
+                        </tr>
+                    <% }) %>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>
