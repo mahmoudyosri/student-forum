@@ -413,7 +413,6 @@ app.get('/admin', isAdmin, async (req, res) => {
     }
 });
 
-// مسار إدارة الطلاب والحسابات
 app.get('/admin/students', isAdmin, async (req, res) => {
     try {
         const searchQuery = req.query.search ? `%${req.query.search.trim()}%` : null;
@@ -435,7 +434,18 @@ app.get('/admin/students', isAdmin, async (req, res) => {
     }
 });
 
-// حظر / إلغاء حظر طالب
+// إعادة ضبط كلمة مرور طالب
+app.post('/admin/reset-password/:national_id', isAdmin, async (req, res) => {
+    try {
+        const { national_id } = req.params;
+        await db.run('UPDATE users SET password = NULL WHERE national_id = ?', [national_id]);
+        res.redirect('/admin/students');
+    } catch (err) {
+        console.error('Reset Password Error:', err);
+        res.redirect('/admin/students');
+    }
+});
+
 app.post('/admin/toggle-ban/:national_id', isAdmin, async (req, res) => {
     try {
         const user = await db.get('SELECT is_banned FROM users WHERE national_id = ?', [req.params.national_id]);
@@ -449,7 +459,6 @@ app.post('/admin/toggle-ban/:national_id', isAdmin, async (req, res) => {
     }
 });
 
-// قبول منشور صورة معلقة
 app.post('/admin/approve-post/:id', isAdmin, async (req, res) => {
     try {
         await db.run("UPDATE posts SET media_status = 'approved' WHERE id = ?", [req.params.id]);
@@ -459,7 +468,6 @@ app.post('/admin/approve-post/:id', isAdmin, async (req, res) => {
     }
 });
 
-// رفض/حذف منشور
 app.post('/admin/delete-post/:id', isAdmin, async (req, res) => {
     try {
         const post = await db.get('SELECT file_path FROM posts WHERE id = ?', [req.params.id]);
@@ -473,7 +481,6 @@ app.post('/admin/delete-post/:id', isAdmin, async (req, res) => {
     }
 });
 
-// تثبيت / إزالة تثبيت منشور
 app.post('/admin/toggle-pin/:id', isAdmin, async (req, res) => {
     try {
         const post = await db.get('SELECT is_pinned FROM posts WHERE id = ?', [req.params.id]);
@@ -486,7 +493,6 @@ app.post('/admin/toggle-pin/:id', isAdmin, async (req, res) => {
     }
 });
 
-// تجاهل البلاغ
 app.post('/admin/reports/:id/dismiss', isAdmin, async (req, res) => {
     try {
         const report = await db.get('SELECT * FROM reports WHERE id = ?', [req.params.id]);
@@ -504,7 +510,6 @@ app.post('/admin/reports/:id/dismiss', isAdmin, async (req, res) => {
     }
 });
 
-// حظر صاحب المحتوى من البلاغات
 app.post('/admin/reports/:id/ban-user', isAdmin, async (req, res) => {
     try {
         const report = await db.get('SELECT * FROM reports WHERE id = ?', [req.params.id]);
