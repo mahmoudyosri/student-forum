@@ -130,16 +130,18 @@ async function initDB() {
         );
     `);
 
-    let adminUser = await db.get('SELECT * FROM users WHERE national_id = "29000000000000"');
+    // تهيئة الأدمن بالرقم القومي الجديد (29000000000000)
+    const ADMIN_NID = "29000000000000";
+    let adminUser = await db.get('SELECT * FROM users WHERE role = "admin" OR national_id = ?', [ADMIN_NID]);
     const hashedAdminPass = await bcrypt.hash('admin2026Pass', 10);
     
     if (!adminUser) {
-        await db.run('INSERT INTO users (national_id, display_name, password, role) VALUES (?, ?, ?, ?)', ['29000000000000', 'إدارة المعهد', hashedAdminPass, 'admin']);
+        await db.run('INSERT INTO users (national_id, display_name, password, role) VALUES (?, ?, ?, ?)', [ADMIN_NID, 'إدارة المعهد', hashedAdminPass, 'admin']);
     } else {
-        await db.run('UPDATE users SET password = ? WHERE national_id = "29000000000000"', [hashedAdminPass]);
+        await db.run('UPDATE users SET national_id = ?, password = ? WHERE role = "admin"', [ADMIN_NID, hashedAdminPass]);
     }
 
-    console.log(`⚡ تم تهيئة قاعدة البيانات بنجاح.`);
+    console.log(`⚡ تم تهيئة قاعدة البيانات وحساب الأدمن بنجاح.`);
 }
 
 function isAuthenticated(req, res, next) {
@@ -166,7 +168,7 @@ function deleteFileIfExists(filePath) {
     }
 }
 
-// --- Auth & Main Routes ---
+// --- Auth Routes ---
 
 app.get('/login', (req, res) => {
     res.render('login', { error: null, needPasswordSetup: false, national_id: null });
@@ -183,6 +185,7 @@ app.post('/login', async (req, res) => {
             return res.render('login', { error: `تم حظر هذا الحساب. سبب الحظر: (${user.ban_reason || 'مخالفة الشروط'})`, needPasswordSetup: false, national_id: null });
         }
 
+        // تسجيل دخول الأدمن
         if (cleanId === '29000000000000') {
             if (!password) return res.render('login', { error: 'يرجى كتابة كلمة مرور الأدمن.', needPasswordSetup: false, national_id: cleanId });
             
@@ -259,6 +262,8 @@ app.post('/set-password', async (req, res) => {
         res.redirect('/login');
     }
 });
+
+// --- Main Feed Routes ---
 
 app.get('/', isAuthenticated, async (req, res) => {
     try {
@@ -427,8 +432,6 @@ app.get('/admin/students', isAdmin, async (req, res) => {
             params.push(searchQuery, searchQuery);
         }
         const students = await db.all(sql, params) || [];
-        
-        // جلب الحسابات المحظورة
         const bannedUsers = await db.all('SELECT * FROM users WHERE is_banned = 1') || [];
 
         res.render('admin-students', { user: req.session.user, students, bannedUsers, search: req.query.search || '' });
@@ -438,14 +441,24 @@ app.get('/admin/students', isAdmin, async (req, res) => {
     }
 });
 
-// حظر / فك حظر طالب مع إضافة السبب
+app.post('/admin/reset-password/:national_id', isAdmin, async (req, res) => {
+    try {
+        const { national_id } = req.params;
+        await db.run('UPDATE users SET password = NULL WHERE national_id = ?', [national_id]);
+        res.redirect('/admin/students');
+    } catch (err) {
+        console.error('Reset Password Error:', err);
+        res.redirect('/admin/students');
+    }
+});
+
 app.post('/admin/toggle-ban/:national_id', isAdmin, async (req, res) => {
     try {
         const { ban_reason } = req.body;
         const user = await db.get('SELECT is_banned FROM users WHERE national_id = ?', [req.params.national_id]);
         if (user) {
             const newStatus = user.is_banned ? 0 : 1;
-            const reason = newStatus === 1 ? (ban_reason || 'مخالفة الشروط والتعليمات') : null;
+            const reason = newStatus === 1 ? (ban_reason || 'حظر يدوي من الإدارة') : null;
             await db.run('UPDATE users SET is_banned = ?, ban_reason = ? WHERE national_id = ?', [newStatus, reason, req.params.national_id]);
         }
         res.redirect('/admin/students');
@@ -455,7 +468,112 @@ app.post('/admin/toggle-ban/:national_id', isAdmin, async (req, res) => {
     }
 });
 
-// حظر صاحب المحتوى المُشتكى عليه
+app.post('/admin/add-student', isAdmin, async (req, res) => {
+    try {
+        const { national_id, full_name } = req.body;
+        if (national_id && full_name) {
+            await db.run('INSERT OR IGNORE INTO allowed_students (national_id, full_name) VALUES (?, ?)', [national_id.trim(), full_name.trim()]);
+        }
+        res.redirect('/admin');
+    } catch (err) {
+        res.redirect('/admin');
+    }
+});
+
+app.post('/admin/import-excel', isAdmin, upload.single('excelFile'), async (req, res) => {
+    if (!req.file) return res.status(400).send('يرجى اختيار ملف الإكسيل.');
+
+    try {
+        const workbook = XLSX.readFile(req.file.path);
+        const sheetName = workbook.SheetNames[0];
+        const sheetData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+
+        for (let row of sheetData) {
+            const nationalId = row['national_id'] || row['الرقم القومي'] || row['الرقم_القومي'];
+            const fullName = row['full_name'] || row['الاسم'] || row['اسم الطالب'];
+
+            if (nationalId && fullName) {
+                await db.run('INSERT OR IGNORE INTO allowed_students (national_id, full_name) VALUES (?, ?)', [String(nationalId).trim(), String(fullName).trim()]);
+            }
+        }
+
+        fs.unlinkSync(req.file.path);
+        res.redirect('/admin');
+    } catch (err) {
+        console.error('Import Excel Error:', err);
+        res.status(500).send('خطأ أثناء معالجة ملف الإكسيل.');
+    }
+});
+
+app.post('/admin/approve-post/:id', isAdmin, async (req, res) => {
+    try {
+        await db.run("UPDATE posts SET media_status = 'approved' WHERE id = ?", [req.params.id]);
+        res.redirect('/admin');
+    } catch (err) {
+        res.redirect('/admin');
+    }
+});
+
+app.post('/admin/approve/:id', isAdmin, async (req, res) => {
+    try {
+        await db.run("UPDATE posts SET media_status = 'approved' WHERE id = ?", [req.params.id]);
+        res.redirect('/admin');
+    } catch (err) {
+        res.redirect('/admin');
+    }
+});
+
+app.post('/admin/delete-post/:id', isAdmin, async (req, res) => {
+    try {
+        const post = await db.get('SELECT file_path FROM posts WHERE id = ?', [req.params.id]);
+        if (post) deleteFileIfExists(post.file_path);
+        
+        await db.run("DELETE FROM posts WHERE id = ?", [req.params.id]);
+        await db.run("DELETE FROM comments WHERE post_id = ?", [req.params.id]);
+        res.redirect('/admin');
+    } catch (err) {
+        res.redirect('/admin');
+    }
+});
+
+app.post('/admin/delete-comment/:id', isAdmin, async (req, res) => {
+    try {
+        await db.run("DELETE FROM comments WHERE id = ?", [req.params.id]);
+        res.redirect('/admin');
+    } catch (err) {
+        res.redirect('/admin');
+    }
+});
+
+app.post('/admin/toggle-pin/:id', isAdmin, async (req, res) => {
+    try {
+        const post = await db.get('SELECT is_pinned FROM posts WHERE id = ?', [req.params.id]);
+        if (post) {
+            await db.run('UPDATE posts SET is_pinned = ? WHERE id = ?', [post.is_pinned ? 0 : 1, req.params.id]);
+        }
+        res.redirect('/admin');
+    } catch (err) {
+        res.redirect('/admin');
+    }
+});
+
+app.post('/admin/reports/:id/dismiss', isAdmin, async (req, res) => {
+    try {
+        const report = await db.get('SELECT * FROM reports WHERE id = ?', [req.params.id]);
+        if (report) {
+            if (report.target_type === 'post') {
+                await db.run("UPDATE posts SET media_status = 'approved' WHERE id = ?", [report.target_id]);
+            } else if (report.target_type === 'comment') {
+                await db.run("UPDATE comments SET is_hidden = 0 WHERE id = ?", [report.target_id]);
+            }
+            await db.run('DELETE FROM reports WHERE id = ?', [req.params.id]);
+        }
+        res.redirect('/admin');
+    } catch (err) {
+        res.redirect('/admin');
+    }
+});
+
 app.post('/admin/reports/:id/ban-user', isAdmin, async (req, res) => {
     try {
         const report = await db.get('SELECT * FROM reports WHERE id = ?', [req.params.id]);
@@ -477,7 +595,7 @@ app.post('/admin/reports/:id/ban-user', isAdmin, async (req, res) => {
             }
 
             if (userIdToBan) {
-                await db.run('UPDATE users SET is_banned = 1, ban_reason = ? WHERE id = ?', ['محتوى مخالف بناءً على بلاغ معتمد', userIdToBan]);
+                await db.run('UPDATE users SET is_banned = 1, ban_reason = ? WHERE id = ?', ['نشر محتوى مخالف بناءً على بلاغ معتمد', userIdToBan]);
             }
             await db.run('DELETE FROM reports WHERE id = ?', [req.params.id]);
         }
@@ -487,41 +605,18 @@ app.post('/admin/reports/:id/ban-user', isAdmin, async (req, res) => {
     }
 });
 
-// حظر المُبَلِّغ في حال كان البلاغ كاذباً
 app.post('/admin/reports/:id/ban-reporter', isAdmin, async (req, res) => {
     try {
         const report = await db.get('SELECT * FROM reports WHERE id = ?', [req.params.id]);
         if (report) {
-            // حظر المُبَلِّغ
             await db.run('UPDATE users SET is_banned = 1, ban_reason = ? WHERE id = ?', ['تقديم بلاغ كاذب ومضلل', report.reporter_id]);
             
-            // إعادة إظهار المنشور/التعليق المشتكى عليه
             if (report.target_type === 'post') {
                 await db.run("UPDATE posts SET media_status = 'approved' WHERE id = ?", [report.target_id]);
             } else if (report.target_type === 'comment') {
                 await db.run("UPDATE comments SET is_hidden = 0 WHERE id = ?", [report.target_id]);
             }
 
-            // حذف البلاغ
-            await db.run('DELETE FROM reports WHERE id = ?', [req.params.id]);
-        }
-        res.redirect('/admin');
-    } catch (err) {
-        console.error('Ban Reporter Error:', err);
-        res.redirect('/admin');
-    }
-});
-
-// إعادة الضبط والتفعيل
-app.post('/admin/reports/:id/dismiss', isAdmin, async (req, res) => {
-    try {
-        const report = await db.get('SELECT * FROM reports WHERE id = ?', [req.params.id]);
-        if (report) {
-            if (report.target_type === 'post') {
-                await db.run("UPDATE posts SET media_status = 'approved' WHERE id = ?", [report.target_id]);
-            } else if (report.target_type === 'comment') {
-                await db.run("UPDATE comments SET is_hidden = 0 WHERE id = ?", [report.target_id]);
-            }
             await db.run('DELETE FROM reports WHERE id = ?', [req.params.id]);
         }
         res.redirect('/admin');
