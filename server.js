@@ -1,7 +1,6 @@
 const express = require('express');
 const session = require('express-session');
-const sqlite3 = require('sqlite3');
-const { open } = require('sqlite');
+const { Pool } = require('pg');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
@@ -11,10 +10,15 @@ const bcrypt = require('bcryptjs');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// تحديد مسار التخزين الدائم على Render أو المجلد المحلي أثناء التطوير
-const DATA_DIR = process.env.RENDER ? '/opt/render/project/src/data' : __dirname;
+// الاتصال بقاعدة بيانات PostgreSQL المجانية
+const connectionString = process.env.DATABASE_URL || 'postgresql://sqlite_data_pk5r_user:k2mq3R6TCkI29LWipvlRsAHqJy8Lptuo@dpg-db1ml097lnhs73dl51p0-a/sqlite_data_pk5r';
 
-const uploadDir = path.join(DATA_DIR, 'uploads');
+const pool = new Pool({
+    connectionString: connectionString,
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+});
+
+const uploadDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
 }
@@ -61,89 +65,73 @@ app.use(session({
     saveUninitialized: false
 }));
 
-let db;
-
 async function initDB() {
-    db = await open({
-        filename: path.join(DATA_DIR, 'database.sqlite'),
-        driver: sqlite3.Database
-    });
-
-    await db.exec(`
+    await pool.query(`
         CREATE TABLE IF NOT EXISTS allowed_students (
-            national_id TEXT PRIMARY KEY,
-            full_name TEXT NOT NULL
+            national_id VARCHAR(50) PRIMARY KEY,
+            full_name VARCHAR(255) NOT NULL
         );
     `);
 
-    await db.exec(`
+    await pool.query(`
         CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            national_id TEXT UNIQUE,
-            display_name TEXT,
-            password TEXT,
-            role TEXT DEFAULT 'student',
-            is_banned INTEGER DEFAULT 0,
+            id SERIAL PRIMARY KEY,
+            national_id VARCHAR(50) UNIQUE,
+            display_name VARCHAR(255),
+            password VARCHAR(255),
+            role VARCHAR(50) DEFAULT 'student',
+            is_banned INT DEFAULT 0,
             ban_reason TEXT
         );
     `);
 
-    try { await db.exec(`ALTER TABLE users ADD COLUMN is_banned INTEGER DEFAULT 0;`); } catch(e){}
-    try { await db.exec(`ALTER TABLE users ADD COLUMN ban_reason TEXT;`); } catch(e){}
-
-    await db.exec(`
+    await pool.query(`
         CREATE TABLE IF NOT EXISTS posts (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER,
+            id SERIAL PRIMARY KEY,
+            user_id INT REFERENCES users(id) ON DELETE CASCADE,
             content TEXT,
             file_path TEXT,
-            file_type TEXT,
-            media_status TEXT DEFAULT 'approved',
-            is_pinned INTEGER DEFAULT 0,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users(id)
+            file_type VARCHAR(50),
+            media_status VARCHAR(50) DEFAULT 'approved',
+            is_pinned INT DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
     `);
 
-    await db.exec(`
+    await pool.query(`
         CREATE TABLE IF NOT EXISTS comments (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            post_id INTEGER,
-            user_id INTEGER,
+            id SERIAL PRIMARY KEY,
+            post_id INT REFERENCES posts(id) ON DELETE CASCADE,
+            user_id INT REFERENCES users(id) ON DELETE CASCADE,
             content TEXT NOT NULL,
-            is_hidden INTEGER DEFAULT 0,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (post_id) REFERENCES posts(id),
-            FOREIGN KEY (user_id) REFERENCES users(id)
+            is_hidden INT DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
     `);
 
-    try { await db.exec(`ALTER TABLE comments ADD COLUMN is_hidden INTEGER DEFAULT 0;`); } catch(e){}
-
-    await db.exec(`
+    await pool.query(`
         CREATE TABLE IF NOT EXISTS reports (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            reporter_id INTEGER NOT NULL,
-            target_type TEXT NOT NULL,
-            target_id INTEGER NOT NULL,
+            id SERIAL PRIMARY KEY,
+            reporter_id INT REFERENCES users(id) ON DELETE CASCADE,
+            target_type VARCHAR(50) NOT NULL,
+            target_id INT NOT NULL,
             reason TEXT NOT NULL,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (reporter_id) REFERENCES users(id)
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
     `);
 
-    // تهيئة الأدمن بالرقم القومي (29000000000000)
+    // تهيئة حساب الأدمن
     const ADMIN_NID = "29000000000000";
-    let adminUser = await db.get('SELECT * FROM users WHERE role = "admin" OR national_id = ?', [ADMIN_NID]);
+    const adminCheck = await pool.query('SELECT * FROM users WHERE role = $1 OR national_id = $2', ['admin', ADMIN_NID]);
     const hashedAdminPass = await bcrypt.hash('admin2026Pass', 10);
-    
-    if (!adminUser) {
-        await db.run('INSERT INTO users (national_id, display_name, password, role) VALUES (?, ?, ?, ?)', [ADMIN_NID, 'إدارة المعهد', hashedAdminPass, 'admin']);
+
+    if (adminCheck.rows.length === 0) {
+        await pool.query('INSERT INTO users (national_id, display_name, password, role) VALUES ($1, $2, $3, $4)', [ADMIN_NID, 'إدارة المعهد', hashedAdminPass, 'admin']);
     } else {
-        await db.run('UPDATE users SET password = ? WHERE role = "admin"', [hashedAdminPass]);
+        await pool.query('UPDATE users SET national_id = $1, password = $2 WHERE role = $3', [ADMIN_NID, hashedAdminPass, 'admin']);
     }
 
-    console.log(`⚡ تم تهيئة قاعدة البيانات في (${DATA_DIR}) بنجاح.`);
+    console.log(`⚡ تم تهيئة قاعدة بيانات PostgreSQL بنجاح.`);
 }
 
 function isAuthenticated(req, res, next) {
@@ -164,7 +152,7 @@ function isAdmin(req, res, next) {
 
 function deleteFileIfExists(filePath) {
     if (!filePath) return;
-    const fullPath = path.join(DATA_DIR, filePath.replace('/uploads', 'uploads'));
+    const fullPath = path.join(__dirname, filePath);
     if (fs.existsSync(fullPath)) {
         try { fs.unlinkSync(fullPath); } catch (e) { console.error('خطأ حذف الملف:', e); }
     }
@@ -181,7 +169,8 @@ app.post('/login', async (req, res) => {
         const { national_id, password } = req.body;
         const cleanId = national_id ? national_id.trim() : '';
 
-        const user = await db.get('SELECT * FROM users WHERE national_id = ?', [cleanId]);
+        const userRes = await pool.query('SELECT * FROM users WHERE national_id = $1', [cleanId]);
+        const user = userRes.rows[0];
 
         if (user && user.is_banned) {
             return res.render('login', { error: `تم حظر هذا الحساب. سبب الحظر: (${user.ban_reason || 'مخالفة الشروط'})`, needPasswordSetup: false, national_id: null });
@@ -199,7 +188,9 @@ app.post('/login', async (req, res) => {
             }
         }
 
-        const allowed = await db.get('SELECT * FROM allowed_students WHERE national_id = ?', [cleanId]);
+        const allowedRes = await pool.query('SELECT * FROM allowed_students WHERE national_id = $1', [cleanId]);
+        const allowed = allowedRes.rows[0];
+
         if (!allowed) {
             return res.render('login', { error: 'الرقم القومي غير مسجل في القائمة المعتمدة للطلاب.', needPasswordSetup: false, national_id: null });
         }
@@ -242,18 +233,20 @@ app.post('/set-password', async (req, res) => {
             return res.render('login', { error: 'كلمتا المرور غير متطابقتين!', needPasswordSetup: true, national_id, studentName: '' });
         }
 
-        const allowed = await db.get('SELECT * FROM allowed_students WHERE national_id = ?', [national_id]);
+        const allowedRes = await pool.query('SELECT * FROM allowed_students WHERE national_id = $1', [national_id]);
+        const allowed = allowedRes.rows[0];
         if (!allowed) return res.redirect('/login');
 
         const hashedPassword = await bcrypt.hash(password, 10);
-        let user = await db.get('SELECT * FROM users WHERE national_id = ?', [national_id]);
+        const userRes = await pool.query('SELECT * FROM users WHERE national_id = $1', [national_id]);
+        let user = userRes.rows[0];
 
         if (user) {
-            await db.run('UPDATE users SET password = ? WHERE national_id = ?', [hashedPassword, national_id]);
+            await pool.query('UPDATE users SET password = $1 WHERE national_id = $2', [hashedPassword, national_id]);
             user.password = hashedPassword;
         } else {
-            const result = await db.run('INSERT INTO users (national_id, display_name, password) VALUES (?, ?, ?)', [national_id, allowed.full_name, hashedPassword]);
-            user = { id: result.lastID, national_id, display_name: allowed.full_name, role: 'student', is_banned: 0 };
+            const insertRes = await pool.query('INSERT INTO users (national_id, display_name, password) VALUES ($1, $2, $3) RETURNING id', [national_id, allowed.full_name, hashedPassword]);
+            user = { id: insertRes.rows[0].id, national_id, display_name: allowed.full_name, role: 'student', is_banned: 0 };
         }
 
         req.session.user = user;
@@ -275,27 +268,29 @@ app.get('/', isAuthenticated, async (req, res) => {
             SELECT posts.*, users.display_name, users.role 
             FROM posts 
             JOIN users ON posts.user_id = users.id 
-            WHERE (posts.media_status = 'approved' OR posts.user_id = ?)
+            WHERE (posts.media_status = 'approved' OR posts.user_id = $1)
         `;
         let queryParams = [currentUserId];
 
         if (searchQuery) {
-            postsQuery += ` AND (posts.content LIKE ? OR users.display_name LIKE ?)`;
-            queryParams.push(searchQuery, searchQuery);
+            postsQuery += ` AND (posts.content LIKE $2 OR users.display_name LIKE $2)`;
+            queryParams.push(searchQuery);
         }
 
         postsQuery += ` ORDER BY posts.is_pinned DESC, posts.created_at DESC`;
 
-        const posts = await db.all(postsQuery, queryParams) || [];
+        const postsRes = await pool.query(postsQuery, queryParams);
+        const posts = postsRes.rows;
 
         for (let post of posts) {
-            post.comments = await db.all(`
+            const commentsRes = await pool.query(`
                 SELECT comments.*, users.display_name 
                 FROM comments 
                 JOIN users ON comments.user_id = users.id 
-                WHERE comments.post_id = ? AND (comments.is_hidden IS NULL OR comments.is_hidden = 0)
+                WHERE comments.post_id = $1 AND (comments.is_hidden IS NULL OR comments.is_hidden = 0)
                 ORDER BY comments.created_at ASC
-            `, [post.id]) || [];
+            `, [post.id]);
+            post.comments = commentsRes.rows;
         }
 
         res.render('index', { user: req.session.user, posts, search: req.query.search || '' });
@@ -324,10 +319,9 @@ app.post('/posts', isAuthenticated, upload.single('attachment'), async (req, res
         }
 
         if (content || filePath) {
-            const now = new Date().toISOString();
-            await db.run(
-                'INSERT INTO posts (user_id, content, file_path, file_type, media_status, created_at) VALUES (?, ?, ?, ?, ?, ?)',
-                [req.session.user.id, content, filePath, fileType, mediaStatus, now]
+            await pool.query(
+                'INSERT INTO posts (user_id, content, file_path, file_type, media_status) VALUES ($1, $2, $3, $4, $5)',
+                [req.session.user.id, content, filePath, fileType, mediaStatus]
             );
         }
 
@@ -342,10 +336,9 @@ app.post('/posts/:id/comments', isAuthenticated, async (req, res) => {
     try {
         const { content } = req.body;
         if (content && content.trim()) {
-            const now = new Date().toISOString();
-            await db.run(
-                'INSERT INTO comments (post_id, user_id, content, created_at) VALUES (?, ?, ?, ?)',
-                [req.params.id, req.session.user.id, content, now]
+            await pool.query(
+                'INSERT INTO comments (post_id, user_id, content) VALUES ($1, $2, $3)',
+                [req.params.id, req.session.user.id, content]
             );
         }
         res.redirect('/');
@@ -363,15 +356,15 @@ app.post('/report', isAuthenticated, async (req, res) => {
             return res.status(400).json({ error: 'يرجى توضيح سبب الإبلاغ.' });
         }
 
-        await db.run(
-            'INSERT INTO reports (reporter_id, target_type, target_id, reason) VALUES (?, ?, ?, ?)',
+        await pool.query(
+            'INSERT INTO reports (reporter_id, target_type, target_id, reason) VALUES ($1, $2, $3, $4)',
             [req.session.user.id, target_type, target_id, reason.trim()]
         );
 
         if (target_type === 'post') {
-            await db.run("UPDATE posts SET media_status = 'flagged' WHERE id = ?", [target_id]);
+            await pool.query("UPDATE posts SET media_status = 'flagged' WHERE id = $1", [target_id]);
         } else if (target_type === 'comment') {
-            await db.run("UPDATE comments SET is_hidden = 1 WHERE id = ?", [target_id]);
+            await pool.query("UPDATE comments SET is_hidden = 1 WHERE id = $1", [target_id]);
         }
 
         res.json({ success: true, message: 'تم إرسال البلاغ وإخفاء المحتوى لحين مراجعة الإدارة.' });
@@ -385,14 +378,14 @@ app.post('/report', isAuthenticated, async (req, res) => {
 
 app.get('/admin', isAdmin, async (req, res) => {
     try {
-        const pendingPosts = await db.all(`
+        const pendingPosts = (await pool.query(`
             SELECT posts.*, users.display_name, users.national_id 
             FROM posts 
             JOIN users ON posts.user_id = users.id 
             WHERE posts.media_status = 'pending'
-        `) || [];
+        `)).rows;
 
-        const reports = await db.all(`
+        const reports = (await pool.query(`
             SELECT reports.*, 
                    reporter.id as reporter_user_id, reporter.display_name as reporter_name, reporter.national_id as reporter_nid,
                    posts.content as post_content, comments.content as comment_content
@@ -401,18 +394,19 @@ app.get('/admin', isAdmin, async (req, res) => {
             LEFT JOIN posts ON reports.target_type = 'post' AND reports.target_id = posts.id
             LEFT JOIN comments ON reports.target_type = 'comment' AND reports.target_id = comments.id
             ORDER BY reports.created_at DESC
-        `) || [];
+        `)).rows;
 
-        const allPosts = await db.all(`
+        const allPosts = (await pool.query(`
             SELECT posts.*, users.display_name, users.national_id 
             FROM posts 
             JOIN users ON posts.user_id = users.id 
             ORDER BY posts.is_pinned DESC, posts.created_at DESC
-        `) || [];
+        `)).rows;
 
-        const studentsCount = await db.get('SELECT COUNT(*) as count FROM allowed_students');
+        const studentsCountRes = await pool.query('SELECT COUNT(*) as count FROM allowed_students');
+        const studentsCount = studentsCountRes.rows[0].count;
 
-        res.render('admin', { user: req.session.user, pendingPosts, reports, allPosts, studentsCount: studentsCount ? studentsCount.count : 0 });
+        res.render('admin', { user: req.session.user, pendingPosts, reports, allPosts, studentsCount });
     } catch (err) {
         console.error('Admin Route Error:', err);
         res.status(500).send('حدث خطأ في لوحة التحكم.');
@@ -429,11 +423,11 @@ app.get('/admin/students', isAdmin, async (req, res) => {
         `;
         let params = [];
         if (searchQuery) {
-            sql += ` WHERE allowed_students.national_id LIKE ? OR allowed_students.full_name LIKE ?`;
-            params.push(searchQuery, searchQuery);
+            sql += ` WHERE allowed_students.national_id LIKE $1 OR allowed_students.full_name LIKE $1`;
+            params.push(searchQuery);
         }
-        const students = await db.all(sql, params) || [];
-        const bannedUsers = await db.all('SELECT * FROM users WHERE is_banned = 1') || [];
+        const students = (await pool.query(sql, params)).rows;
+        const bannedUsers = (await pool.query('SELECT * FROM users WHERE is_banned = 1')).rows;
 
         res.render('admin-students', { user: req.session.user, students, bannedUsers, search: req.query.search || '' });
     } catch (err) {
@@ -445,10 +439,9 @@ app.get('/admin/students', isAdmin, async (req, res) => {
 app.post('/admin/reset-password/:national_id', isAdmin, async (req, res) => {
     try {
         const { national_id } = req.params;
-        await db.run('UPDATE users SET password = NULL WHERE national_id = ?', [national_id]);
+        await pool.query('UPDATE users SET password = NULL WHERE national_id = $1', [national_id]);
         res.redirect('/admin/students');
     } catch (err) {
-        console.error('Reset Password Error:', err);
         res.redirect('/admin/students');
     }
 });
@@ -456,15 +449,15 @@ app.post('/admin/reset-password/:national_id', isAdmin, async (req, res) => {
 app.post('/admin/toggle-ban/:national_id', isAdmin, async (req, res) => {
     try {
         const { ban_reason } = req.body;
-        const user = await db.get('SELECT is_banned FROM users WHERE national_id = ?', [req.params.national_id]);
+        const userRes = await pool.query('SELECT is_banned FROM users WHERE national_id = $1', [req.params.national_id]);
+        const user = userRes.rows[0];
         if (user) {
             const newStatus = user.is_banned ? 0 : 1;
             const reason = newStatus === 1 ? (ban_reason || 'حظر يدوي من الإدارة') : null;
-            await db.run('UPDATE users SET is_banned = ?, ban_reason = ? WHERE national_id = ?', [newStatus, reason, req.params.national_id]);
+            await pool.query('UPDATE users SET is_banned = $1, ban_reason = $2 WHERE national_id = $3', [newStatus, reason, req.params.national_id]);
         }
         res.redirect('/admin/students');
     } catch (err) {
-        console.error('Toggle Ban Error:', err);
         res.redirect('/admin/students');
     }
 });
@@ -473,7 +466,7 @@ app.post('/admin/add-student', isAdmin, async (req, res) => {
     try {
         const { national_id, full_name } = req.body;
         if (national_id && full_name) {
-            await db.run('INSERT OR IGNORE INTO allowed_students (national_id, full_name) VALUES (?, ?)', [national_id.trim(), full_name.trim()]);
+            await pool.query('INSERT INTO allowed_students (national_id, full_name) VALUES ($1, $2) ON CONFLICT (national_id) DO NOTHING', [national_id.trim(), full_name.trim()]);
         }
         res.redirect('/admin');
     } catch (err) {
@@ -494,7 +487,7 @@ app.post('/admin/import-excel', isAdmin, upload.single('excelFile'), async (req,
             const fullName = row['full_name'] || row['الاسم'] || row['اسم الطالب'];
 
             if (nationalId && fullName) {
-                await db.run('INSERT OR IGNORE INTO allowed_students (national_id, full_name) VALUES (?, ?)', [String(nationalId).trim(), String(fullName).trim()]);
+                await pool.query('INSERT INTO allowed_students (national_id, full_name) VALUES ($1, $2) ON CONFLICT (national_id) DO NOTHING', [String(nationalId).trim(), String(fullName).trim()]);
             }
         }
 
@@ -508,16 +501,7 @@ app.post('/admin/import-excel', isAdmin, upload.single('excelFile'), async (req,
 
 app.post('/admin/approve-post/:id', isAdmin, async (req, res) => {
     try {
-        await db.run("UPDATE posts SET media_status = 'approved' WHERE id = ?", [req.params.id]);
-        res.redirect('/admin');
-    } catch (err) {
-        res.redirect('/admin');
-    }
-});
-
-app.post('/admin/approve/:id', isAdmin, async (req, res) => {
-    try {
-        await db.run("UPDATE posts SET media_status = 'approved' WHERE id = ?", [req.params.id]);
+        await pool.query("UPDATE posts SET media_status = 'approved' WHERE id = $1", [req.params.id]);
         res.redirect('/admin');
     } catch (err) {
         res.redirect('/admin');
@@ -526,11 +510,10 @@ app.post('/admin/approve/:id', isAdmin, async (req, res) => {
 
 app.post('/admin/delete-post/:id', isAdmin, async (req, res) => {
     try {
-        const post = await db.get('SELECT file_path FROM posts WHERE id = ?', [req.params.id]);
-        if (post) deleteFileIfExists(post.file_path);
+        const postRes = await pool.query('SELECT file_path FROM posts WHERE id = $1', [req.params.id]);
+        if (postRes.rows[0]) deleteFileIfExists(postRes.rows[0].file_path);
         
-        await db.run("DELETE FROM posts WHERE id = ?", [req.params.id]);
-        await db.run("DELETE FROM comments WHERE post_id = ?", [req.params.id]);
+        await pool.query("DELETE FROM posts WHERE id = $1", [req.params.id]);
         res.redirect('/admin');
     } catch (err) {
         res.redirect('/admin');
@@ -539,7 +522,7 @@ app.post('/admin/delete-post/:id', isAdmin, async (req, res) => {
 
 app.post('/admin/delete-comment/:id', isAdmin, async (req, res) => {
     try {
-        await db.run("DELETE FROM comments WHERE id = ?", [req.params.id]);
+        await pool.query("DELETE FROM comments WHERE id = $1", [req.params.id]);
         res.redirect('/admin');
     } catch (err) {
         res.redirect('/admin');
@@ -548,9 +531,9 @@ app.post('/admin/delete-comment/:id', isAdmin, async (req, res) => {
 
 app.post('/admin/toggle-pin/:id', isAdmin, async (req, res) => {
     try {
-        const post = await db.get('SELECT is_pinned FROM posts WHERE id = ?', [req.params.id]);
-        if (post) {
-            await db.run('UPDATE posts SET is_pinned = ? WHERE id = ?', [post.is_pinned ? 0 : 1, req.params.id]);
+        const postRes = await pool.query('SELECT is_pinned FROM posts WHERE id = $1', [req.params.id]);
+        if (postRes.rows[0]) {
+            await pool.query('UPDATE posts SET is_pinned = $1 WHERE id = $2', [postRes.rows[0].is_pinned ? 0 : 1, req.params.id]);
         }
         res.redirect('/admin');
     } catch (err) {
@@ -560,14 +543,15 @@ app.post('/admin/toggle-pin/:id', isAdmin, async (req, res) => {
 
 app.post('/admin/reports/:id/dismiss', isAdmin, async (req, res) => {
     try {
-        const report = await db.get('SELECT * FROM reports WHERE id = ?', [req.params.id]);
+        const reportRes = await pool.query('SELECT * FROM reports WHERE id = $1', [req.params.id]);
+        const report = reportRes.rows[0];
         if (report) {
             if (report.target_type === 'post') {
-                await db.run("UPDATE posts SET media_status = 'approved' WHERE id = ?", [report.target_id]);
+                await pool.query("UPDATE posts SET media_status = 'approved' WHERE id = $1", [report.target_id]);
             } else if (report.target_type === 'comment') {
-                await db.run("UPDATE comments SET is_hidden = 0 WHERE id = ?", [report.target_id]);
+                await pool.query("UPDATE comments SET is_hidden = 0 WHERE id = $1", [report.target_id]);
             }
-            await db.run('DELETE FROM reports WHERE id = ?', [req.params.id]);
+            await pool.query('DELETE FROM reports WHERE id = $1', [req.params.id]);
         }
         res.redirect('/admin');
     } catch (err) {
@@ -577,28 +561,31 @@ app.post('/admin/reports/:id/dismiss', isAdmin, async (req, res) => {
 
 app.post('/admin/reports/:id/ban-user', isAdmin, async (req, res) => {
     try {
-        const report = await db.get('SELECT * FROM reports WHERE id = ?', [req.params.id]);
+        const reportRes = await pool.query('SELECT * FROM reports WHERE id = $1', [req.params.id]);
+        const report = reportRes.rows[0];
         if (report) {
             let userIdToBan = null;
             if (report.target_type === 'post') {
-                const post = await db.get('SELECT * FROM posts WHERE id = ?', [report.target_id]);
+                const postRes = await pool.query('SELECT * FROM posts WHERE id = $1', [report.target_id]);
+                const post = postRes.rows[0];
                 if (post) {
                     userIdToBan = post.user_id;
                     deleteFileIfExists(post.file_path);
-                    await db.run('DELETE FROM posts WHERE id = ?', [post.id]);
+                    await pool.query('DELETE FROM posts WHERE id = $1', [post.id]);
                 }
             } else if (report.target_type === 'comment') {
-                const comment = await db.get('SELECT * FROM comments WHERE id = ?', [report.target_id]);
+                const commentRes = await pool.query('SELECT * FROM comments WHERE id = $1', [report.target_id]);
+                const comment = commentRes.rows[0];
                 if (comment) {
                     userIdToBan = comment.user_id;
-                    await db.run('DELETE FROM comments WHERE id = ?', [comment.id]);
+                    await pool.query('DELETE FROM comments WHERE id = $1', [comment.id]);
                 }
             }
 
             if (userIdToBan) {
-                await db.run('UPDATE users SET is_banned = 1, ban_reason = ? WHERE id = ?', ['نشر محتوى مخالف بناءً على بلاغ معتمد', userIdToBan]);
+                await pool.query('UPDATE users SET is_banned = 1, ban_reason = $1 WHERE id = $2', ['نشر محتوى مخالف بناءً على بلاغ معتمد', userIdToBan]);
             }
-            await db.run('DELETE FROM reports WHERE id = ?', [req.params.id]);
+            await pool.query('DELETE FROM reports WHERE id = $1', [req.params.id]);
         }
         res.redirect('/admin');
     } catch (err) {
@@ -608,17 +595,18 @@ app.post('/admin/reports/:id/ban-user', isAdmin, async (req, res) => {
 
 app.post('/admin/reports/:id/ban-reporter', isAdmin, async (req, res) => {
     try {
-        const report = await db.get('SELECT * FROM reports WHERE id = ?', [req.params.id]);
+        const reportRes = await pool.query('SELECT * FROM reports WHERE id = $1', [req.params.id]);
+        const report = reportRes.rows[0];
         if (report) {
-            await db.run('UPDATE users SET is_banned = 1, ban_reason = ? WHERE id = ?', ['تقديم بلاغ كاذب ومضلل', report.reporter_id]);
+            await pool.query('UPDATE users SET is_banned = 1, ban_reason = $1 WHERE id = $2', ['تقديم بلاغ كاذب ومضلل', report.reporter_id]);
             
             if (report.target_type === 'post') {
-                await db.run("UPDATE posts SET media_status = 'approved' WHERE id = ?", [report.target_id]);
+                await pool.query("UPDATE posts SET media_status = 'approved' WHERE id = $1", [report.target_id]);
             } else if (report.target_type === 'comment') {
-                await db.run("UPDATE comments SET is_hidden = 0 WHERE id = ?", [report.target_id]);
+                await pool.query("UPDATE comments SET is_hidden = 0 WHERE id = $1", [report.target_id]);
             }
 
-            await db.run('DELETE FROM reports WHERE id = ?', [req.params.id]);
+            await pool.query('DELETE FROM reports WHERE id = $1', [req.params.id]);
         }
         res.redirect('/admin');
     } catch (err) {
