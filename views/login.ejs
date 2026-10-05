@@ -6,28 +6,96 @@
     <title>تسجيل الدخول | المنصة التعليمية</title>
     <style>
         :root {
-            --primary: #1e3a8a;
-            --accent: #3b82f6;
-            --bg: #f8fafc;
+            --primary: #0f172a;
+            --accent: #2563eb;
+            --accent-hover: #1d4ed8;
+            --bg-start: #0f172a;
+            --bg-end: #1e293b;
             --surface: #ffffff;
             --text: #0f172a;
-            --border: #e2e8f0;
+            --border: #cbd5e1;
         }
         * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; }
-        body { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 1rem; }
-        .login-card { background: var(--surface); padding: 2.5rem; border-radius: 16px; width: 100%; max-width: 420px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3); text-align: center; }
-        .logo-box { margin-bottom: 1.5rem; }
+        body { 
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%); 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            min-height: 100vh; 
+            padding: 1rem; 
+        }
+        .login-card { 
+            background: var(--surface); 
+            padding: 2.5rem; 
+            border-radius: 16px; 
+            width: 100%; 
+            max-width: 420px; 
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.2); 
+            text-align: center; 
+        }
+        .logo-box { margin-bottom: 1.25rem; }
         .logo-box img { max-height: 85px; width: auto; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1)); }
         h2 { color: var(--primary); font-size: 1.35rem; font-weight: 700; margin-bottom: 0.25rem; }
         p.subtitle { color: #64748b; font-size: 0.85rem; margin-bottom: 1.75rem; }
         .form-group { text-align: right; margin-bottom: 1.25rem; }
         label { display: block; font-size: 0.85rem; font-weight: 600; color: #334155; margin-bottom: 0.4rem; }
-        input { width: 100%; padding: 0.75rem 1rem; border: 1.5px solid var(--border); border-radius: 10px; font-size: 0.95rem; transition: all 0.2s; outline: none; }
-        input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15); }
-        button { width: 100%; background: linear-gradient(135deg, #1e3a8a, #2563eb); color: white; border: none; padding: 0.85rem; border-radius: 10px; font-weight: 700; cursor: pointer; font-size: 1rem; transition: transform 0.1s, box-shadow 0.2s; }
-        button:hover { box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3); }
-        .error-msg { background: #fef2f2; color: #991b1b; padding: 0.75rem; border-radius: 10px; border: 1px solid #fecaca; margin-bottom: 1.25rem; font-size: 0.85rem; text-align: right; }
-        .info-msg { background: #eff6ff; color: #1e40af; padding: 0.85rem; border-radius: 10px; border: 1px solid #bfdbfe; margin-bottom: 1.25rem; font-size: 0.85rem; text-align: right; line-height: 1.5; }
+        input { 
+            width: 100%; 
+            padding: 0.75rem 1rem; 
+            border: 1.5px solid var(--border); 
+            border-radius: 10px; 
+            font-size: 0.95rem; 
+            transition: all 0.2s ease-in-out; 
+            outline: none; 
+        }
+        input:focus { 
+            border-color: var(--accent); 
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15); 
+        }
+        button { 
+            width: 100%; 
+            background: linear-gradient(135deg, #1e3a8a, var(--accent)); 
+            color: white; 
+            border: none; 
+            padding: 0.85rem; 
+            border-radius: 10px; 
+            font-weight: 700; 
+            cursor: pointer; 
+            font-size: 1rem; 
+            transition: all 0.2s ease-in-out; 
+        }
+        button:hover { 
+            background: linear-gradient(135deg, #1e3a8a, var(--accent-hover));
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35); 
+            transform: translateY(-1px);
+        }
+        button:active {
+            transform: translateY(0);
+        }
+        .error-msg { 
+            background: #fef2f2; 
+            color: #991b1b; 
+            padding: 0.75rem 1rem; 
+            border-radius: 10px; 
+            border: 1px solid #fecaca; 
+            margin-bottom: 1.25rem; 
+            font-size: 0.85rem; 
+            text-align: right; 
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .info-msg { 
+            background: #eff6ff; 
+            color: #1e40af; 
+            padding: 0.85rem 1rem; 
+            border-radius: 10px; 
+            border: 1px solid #bfdbfe; 
+            margin-bottom: 1.25rem; 
+            font-size: 0.85rem; 
+            text-align: right; 
+            line-height: 1.5; 
+        }
     </style>
 </head>
 <body>
@@ -39,7 +107,7 @@
         <p class="subtitle">بوابة التواصل والتبادل العلمي للطلاب والإدارة</p>
 
         <% if (error) { %>
-            <div class="error-msg">⚠️ <%= error %></div>
+            <div class="error-msg">⚠️ <span><%= error %></span></div>
         <% } %>
 
         <% if (needPasswordSetup) { %>
@@ -48,34 +116,46 @@
                 يرجى إعداد كلمة مرور خاصة بك لاستخدامها في الدخول المستقبلي.
             </div>
 
-            <form action="/set-password" method="POST">
+            <form action="/set-password" method="POST" onsubmit="return validatePasswordMatch()">
                 <input type="hidden" name="national_id" value="<%= national_id %>">
                 
                 <div class="form-group">
                     <label>أنشئ كلمة المرور:</label>
-                    <input type="password" name="password" placeholder="6 أحرف أو أرقام على الأقل" required minlength="6">
+                    <input type="password" id="pass" name="password" placeholder="6 أحرف أو أرقام على الأقل" required minlength="6">
                 </div>
 
                 <div class="form-group">
                     <label>تأكيد كلمة المرور:</label>
-                    <input type="password" name="confirm_password" placeholder="أعد كتابة كلمة المرور" required minlength="6">
+                    <input type="password" id="confirm_pass" name="confirm_password" placeholder="أعد كتابة كلمة المرور" required minlength="6">
                 </div>
 
                 <button type="submit">حفظ كلمة المرور والدخول 🚀</button>
             </form>
+
+            <script>
+                function validatePasswordMatch() {
+                    const pass = document.getElementById('pass').value;
+                    const confirmPass = document.getElementById('confirm_pass').value;
+                    if (pass !== confirmPass) {
+                        alert('كلمتا المرور غير متطابقتين، يرجى التأكد وإعادة المحاولة.');
+                        return false;
+                    }
+                    return true;
+                }
+            </script>
         <% } else { %>
             <form action="/login" method="POST">
                 <div class="form-group">
                     <label>الرقم القومي:</label>
-                    <input type="text" name="national_id" value="<%= national_id || '' %>" placeholder="أدخل الرقم القومي الخاص بك" required>
+                    <input type="text" name="national_id" value="<%= national_id || '' %>" placeholder="أدخل الرقم القومي الخاص بك (14 رقم)" required maxlength="14" pattern="[0-9]{14}" inputmode="numeric" title="يرجى إدخال 14 رقم باللغة الإنجليزية/الأرقام">
                 </div>
 
                 <div class="form-group">
                     <label>كلمة المرور:</label>
-                    <input type="password" name="password" placeholder="أدخل كلمة المرور (عند التسجيل المسبق)">
+                    <input type="password" name="password" placeholder="أدخل كلمة المرور (في حال التسجيل المسبق)">
                 </div>
 
-                <button type="submit">تسجيل الدخول المنصة</button>
+                <button type="submit">تسجيل الدخول للمنصة</button>
             </form>
         <% } %>
     </div>
