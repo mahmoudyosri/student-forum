@@ -128,7 +128,7 @@ async function initDB() {
         );
     `);
 
-    let adminUser = await db.get('SELECT * FROM users WHERE national_id = "admin123"');
+    let adminUser = await db.get('SELECT * FROM users WHERE national_id = "admin123456789"');
     const hashedAdminPass = await bcrypt.hash('admin2026Pass', 10);
     
     if (!adminUser) {
