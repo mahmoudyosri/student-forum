@@ -1,186 +1,418 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+
+<html dir="rtl" lang="ar">
+
 <head>
+
     <meta charset="UTF-8">
+
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>لوحة التحكم الإبداعية | Admin Dashboard</title>
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome للأيقونات -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Google Fonts (Cairo) -->
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        cairo: ['Cairo', 'sans-serif'],
-                    },
-                    colors: {
-                        brand: {
-                            50: '#f0f5ff',
-                            100: '#e0ebff',
-                            500: '#4f46e5',
-                            600: '#4338ca',
-                            700: '#3730a3',
-                        }
-                    }
-                }
-            }
-        }
-    </script>
+
+    <title>لوحة تحكم الأدمن | المنتدى</title>
+
     <style>
-        body { font-family: 'Cairo', sans-serif; }
-        .glass-card {
-            background: rgba(255, 255, 255, 0.85);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(226, 232, 240, 0.8);
-        }
+
+        :root { --primary: #0f172a; --accent: #2563eb; --bg: #f8fafc; --border: #cbd5e1; }
+
+        * { box-sizing: border-box; font-family: 'Segoe UI', system-ui, sans-serif; margin: 0; padding: 0; }
+
+        body { background: var(--bg); color: #1e293b; padding-bottom: 50px; }
+
+        .navbar { background: var(--primary); color: white; padding: 0.85rem 2rem; display: flex; justify-content: space-between; align-items: center; }
+
+        .nav-links { display: flex; gap: 12px; align-items: center; }
+
+        .btn-nav-students { background: #0284c7; color: white; padding: 0.45rem 0.9rem; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 0.85rem; transition: 0.2s; }
+
+        .btn-nav-students:hover { background: #0369a1; }
+
+        .container { max-width: 1000px; margin: 2rem auto; padding: 0 1rem; }
+
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem; }
+
+        .card { background: white; border-radius: 12px; border: 1px solid #e2e8f0; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.03); }
+
+        .card h3 { margin-bottom: 1rem; color: #334155; font-size: 1.1rem; }
+
+        .form-group { margin-bottom: 1rem; }
+
+        .form-group label { display: block; margin-bottom: 0.4rem; font-size: 0.85rem; font-weight: 600; }
+
+        .form-group input, .form-group textarea { width: 100%; padding: 0.6rem; border: 1px solid var(--border); border-radius: 6px; }
+
+        .btn { border: none; padding: 0.6rem 1.2rem; border-radius: 6px; font-weight: 600; cursor: pointer; color: white; }
+
+        .btn-accent { background: var(--accent); }
+
+        .btn-success { background: #16a34a; }
+
+        .btn-danger { background: #dc2626; }
+
+        .btn-warning { background: #d97706; }
+
+        .post-card { background: white; border-radius: 10px; padding: 1rem; border: 1px solid #e2e8f0; margin-bottom: 1rem; position: relative; }
+
+        .report-card { background: #fff5f5; border: 2px solid #f87171; border-radius: 10px; padding: 1.2rem; margin-bottom: 1rem; }
+
+        .pinned-badge { background: #f59e0b; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; margin-right: 5px; }
+
+        .actions { display: flex; gap: 8px; margin-top: 0.8rem; }
+
+        .comment-item { background: #f8fafc; padding: 0.5rem; border-radius: 6px; margin-top: 0.5rem; display: flex; justify-content: space-between; font-size: 0.85rem; }
+
     </style>
+
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col antialiased selection:bg-indigo-500 selection:text-white">
 
-    <!-- شريط التنقل العلوي -->
-    <header class="bg-slate-900/80 backdrop-blur-md border-b border-slate-800 sticky top-0 z-50">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
-            <div class="flex items-center space-x-4 space-x-reverse">
-                <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center shadow-lg shadow-indigo-500/30">
-                    <i class="fa-solid fa-shapes text-white text-xl"></i>
-                </div>
-                <div>
-                    <h1 class="text-xl font-bold bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">لوحة التحكم المركزية</h1>
-                    <p class="text-xs text-slate-400">إدارة النظام، الشكاوى، وشؤون الطلاب بذكاء</p>
-                </div>
-            </div>
-            
-            <div class="flex items-center space-x-3 space-x-reverse">
-                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                    <span class="w-2 h-2 mr-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                    النظام يعمل بكفاءة
-                </span>
-                <a href="/logout" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-rose-500/10 hover:text-rose-400 hover:border-rose-500/20 border border-slate-700 transition text-sm font-semibold flex items-center gap-2">
-                    <i class="fa-solid fa-power-off"></i> خروج
-                </a>
-            </div>
-        </div>
-    </header>
+<body>
 
-    <!-- المحتوى الرئيسي -->
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow space-y-8">
-        
-        <!-- قسم الإحصائيات السريعة -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div class="bg-slate-800/50 border border-slate-700/60 rounded-2xl p-6 relative overflow-hidden group hover:border-indigo-500/50 transition">
-                <div class="absolute -left-4 -bottom-4 w-24 h-24 bg-indigo-500/10 rounded-full blur-xl group-hover:bg-indigo-500/20 transition"></div>
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-sm font-medium text-slate-400">الطلاب المسجلين</p>
-                        <h3 class="text-2xl font-bold text-white mt-1">2,450</h3>
-                    </div>
-                    <div class="w-12 h-12 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center text-xl">
-                        <i class="fa-solid fa-user-graduate"></i>
-                    </div>
-                </div>
-            </div>
 
-            <div class="bg-slate-800/50 border border-slate-700/60 rounded-2xl p-6 relative overflow-hidden group hover:border-amber-500/50 transition">
-                <div class="absolute -left-4 -bottom-4 w-24 h-24 bg-amber-500/10 rounded-full blur-xl group-hover:bg-amber-500/20 transition"></div>
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-sm font-medium text-slate-400">منشورات بانتظار المراجعة</p>
-                        <h3 class="text-2xl font-bold text-white mt-1">12</h3>
-                    </div>
-                    <div class="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center text-xl">
-                        <i class="fa-solid fa-clock-rotate-left"></i>
-                    </div>
-                </div>
-            </div>
 
-            <div class="bg-slate-800/50 border border-slate-700/60 rounded-2xl p-6 relative overflow-hidden group hover:border-rose-500/50 transition">
-                <div class="absolute -left-4 -bottom-4 w-24 h-24 bg-rose-500/10 rounded-full blur-xl group-hover:bg-rose-500/20 transition"></div>
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-sm font-medium text-slate-400">البلاغات الواردة</p>
-                        <h3 class="text-2xl font-bold text-white mt-1">5</h3>
-                    </div>
-                    <div class="w-12 h-12 rounded-xl bg-rose-500/10 text-rose-400 flex items-center justify-center text-xl">
-                        <i class="fa-solid fa-triangle-exclamation"></i>
-                    </div>
-                </div>
-            </div>
+    <div class="navbar">
 
-            <div class="bg-slate-800/50 border border-slate-700/60 rounded-2xl p-6 relative overflow-hidden group hover:border-emerald-500/50 transition">
-                <div class="absolute -left-4 -bottom-4 w-24 h-24 bg-emerald-500/10 rounded-full blur-xl group-hover:bg-emerald-500/20 transition"></div>
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-sm font-medium text-slate-400">التعليقات المنشورة</p>
-                        <h3 class="text-2xl font-bold text-white mt-1">1,280</h3>
-                    </div>
-                    <div class="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-xl">
-                        <i class="fa-solid fa-comments"></i>
-                    </div>
-                </div>
-            </div>
+        <h2>🛠️ لوحة تحكم الإدارة</h2>
+
+        <div class="nav-links">
+
+            <a href="/admin/students" class="btn-nav-students">👥 إدارة حسابات الطلاب</a>
+
+            <a href="/" style="color:white; text-decoration:none;">🏠 الساحة العامة</a>
+
+            <a href="/logout" style="color:#f87171; text-decoration:none;">خروج</a>
+
         </div>
 
-        <!-- قسم التبويبات والمحتوى الرئيسي -->
-        <div class="bg-slate-800/40 border border-slate-800 rounded-3xl p-6 backdrop-blur-xl">
-            <!-- العنوان الفرعي أو التبويبات -->
-            <div class="border-b border-slate-700/60 pb-4 mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <h2 class="text-lg font-bold text-white flex items-center gap-2">
-                    <i class="fa-solid fa-list-check text-indigo-400"></i> إدارة محتوى المنصة والطلاب
-                </h2>
-                <!-- شريط بحث سريع أو فلاتر -->
-                <div class="relative">
-                    <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
-                        <i class="fa-solid fa-search"></i>
-                    </span>
-                    <input type="text" placeholder="بحث سريع في السجلات..." class="w-full sm:w-64 bg-slate-900 border border-slate-700 rounded-xl pr-10 pl-4 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500 transition">
-                </div>
-            </div>
+    </div>
 
-            <!-- نموذج مثال لبطاقة محتوى (يمكن ربطها بـ EJS Loops الخاصة بك) -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <!-- بطاقة الشكاوى والبلاغات -->
-                <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between">
-                    <div>
-                        <div class="flex items-center justify-between mb-3">
-                            <span class="px-3 py-1 rounded-lg text-xs font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/20">بلاغ جديد</span>
-                            <span class="text-xs text-slate-500">منذ 10 دقائق</span>
+
+
+    <div class="container">
+
+
+
+        <!-- قسم البلاغات والشكاوى الجديد -->
+
+        <% if (typeof reports !== 'undefined' && reports && reports.length > 0) { %>
+
+            <div style="margin-bottom: 2rem;">
+
+                <h3 style="color: #dc2626; margin-bottom: 1rem; display: flex; align-items: center; gap: 8px;">
+
+                    🚨 البلاغات المرفوعة لحين المراجعة (<%= reports.length %>)
+
+                </h3>
+
+                <% reports.forEach(report => { %>
+
+                    <div class="report-card">
+
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+
+                            <span style="font-size: 0.85rem; background: #fee2e2; color: #991b1b; padding: 2px 8px; border-radius: 4px; font-weight: 700;">
+
+                                نوع الإبلاغ: <%= report.target_type === 'post' ? 'منشور' : 'تعليق' %>
+
+                            </span>
+
+                            <small style="color: #64748b;">
+
+                                <%= new Date(report.created_at).toLocaleString('ar-EG', { timeZone: 'Africa/Cairo' }) %>
+
+                            </small>
+
                         </div>
-                        <p class="text-sm text-slate-300 leading-relaxed mb-4">هذا النص يمثل محتوى نموذجياً لتعليق أو منشور تم الإبلاغ عنه لمراجعته من قبل الإدارة.</p>
-                    </div>
-                    <div class="flex items-center gap-2 pt-4 border-t border-slate-800">
-                        <button class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white py-2 rounded-xl text-xs font-semibold transition shadow-lg shadow-indigo-600/20">تجاهل البلاغ</button>
-                        <button class="flex-1 bg-rose-600/10 hover:bg-rose-600 text-rose-400 hover:text-white border border-rose-500/20 py-2 rounded-xl text-xs font-semibold transition">حذف المحتوى</button>
-                    </div>
-                </div>
 
-                <!-- بطاقة إدارة شؤون الطلاب -->
-                <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between">
-                    <div>
-                        <div class="flex items-center justify-between mb-3">
-                            <span class="px-3 py-1 rounded-lg text-xs font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">إضافة بيانات طالب</span>
-                            <i class="fa-solid fa-user-plus text-slate-500"></i>
+
+
+                        <p style="font-size: 0.9rem; margin-bottom: 0.4rem;">
+
+                            <b>👤 المُبَلِّغ:</b> <%= report.reporter_name %> (<%= report.reporter_nid %>)
+
+                        </p>
+
+                        <p style="font-size: 0.9rem; margin-bottom: 0.6rem; color: #b91c1c;">
+
+                            <b>📝 سبب الإبلاغ:</b> <%= report.reason %>
+
+                        </p>
+
+
+
+                        <div style="background: white; padding: 0.8rem; border-radius: 6px; border: 1px dashed #fca5a5; margin-bottom: 0.8rem;">
+
+                            <small style="color: #64748b; display: block; margin-bottom: 4px;">المحتوى المشتكى عليه:</small>
+
+                            <p style="font-size: 0.95rem; font-weight: 600; color: #1e293b;">
+
+                                <%= report.target_type === 'post' ? report.post_content : report.comment_content %>
+
+                            </p>
+
                         </div>
-                        <p class="text-sm text-slate-300 mb-4">يمكنك رفع ملف Excel يحتوي على بيانات الدفعة الجديدة أو إضافة طالب فردي بالرقم القومي.</p>
+
+
+
+                        <div class="actions">
+
+                            <!-- إعادة النشر وتجاهل البلاغ -->
+
+                            <form action="/admin/reports/<%= report.id %>/dismiss" method="POST">
+
+                                <button type="submit" class="btn btn-success">إعادة إظهار وتجاهل البلاغ</button>
+
+                            </form>
+
+                            <!-- حذف المحتوى وحظر صاحب المحتوى -->
+
+                            <form action="/admin/reports/<%= report.id %>/ban-user" method="POST" onsubmit="return confirm('هل أنت تأكد من حظر المستخدم وحذف المحتوى نهائياً؟');">
+
+                                <button type="submit" class="btn btn-danger">حذف المحتوى وحظر صاحب المنشور 🚫</button>
+
+                            </form>
+
+                        </div>
+
                     </div>
-                    <div class="flex items-center gap-2 pt-4 border-t border-slate-800">
-                        <button class="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 py-2 rounded-xl text-xs font-semibold transition flex items-center justify-center gap-2">
-                            <i class="fa-solid fa-file-excel text-emerald-400"></i> رفع ملف Excel للطلاب
-                        </button>
-                    </div>
-                </div>
+
+                <% }) %>
+
             </div>
+
+        <% } %>
+
+
+
+        <!-- قسم إضافة الطلاب والإكسيل -->
+
+        <div class="grid">
+
+            <div class="card">
+
+                <h3>📥 استيراد الطلاب من ملف Excel</h3>
+
+                <form action="/admin/import-excel" method="POST" enctype="multipart/form-data">
+
+                    <div class="form-group">
+
+                        <input type="file" name="excelFile" accept=".xlsx, .xls" required>
+
+                    </div>
+
+                    <button type="submit" class="btn btn-accent">رفع ومعالجة الملف</button>
+
+                </form>
+
+                <p style="font-size:0.8rem; color:#64748b; margin-top:8px;">إجمالي الطلاب المعتمدين حالياً: <b><%= studentsCount %></b> طالب</p>
+
+            </div>
+
+
+
+            <div class="card">
+
+                <h3>➕ إضافة طالب يدويًا</h3>
+
+                <form action="/admin/add-student" method="POST">
+
+                    <div class="form-group">
+
+                        <input type="text" name="national_id" placeholder="الرقم القومي" required>
+
+                    </div>
+
+                    <div class="form-group">
+
+                        <input type="text" name="full_name" placeholder="اسم الطالب الثلاثي/الرباعي" required>
+
+                    </div>
+
+                    <button type="submit" class="btn btn-success">إضافة الطالب</button>
+
+                </form>
+
+            </div>
+
         </div>
 
-    </main>
 
-    <!-- تذييل الصفحة -->
-    <footer class="border-t border-slate-800 bg-slate-900/50 py-6 text-center text-xs text-slate-500">
-        <p>جميع الحقوق محفوظة © لوحة التحكم الإدارية المتقدمة</p>
-    </footer>
+
+        <!-- نشر بيان / إعلان رسمى -->
+
+        <div class="card" style="margin-bottom: 2rem;">
+
+            <h3>📢 نشر إعلان / بيان رسمي من إدارة المعهد</h3>
+
+            <form action="/posts" method="POST" enctype="multipart/form-data">
+
+                <div class="form-group">
+
+                    <textarea name="content" rows="3" placeholder="اكتب نص البيان الرسمي هنا..." required></textarea>
+
+                </div>
+
+                <div class="form-group">
+
+                    <input type="file" name="attachment" accept="image/*, application/pdf">
+
+                </div>
+
+                <button type="submit" class="btn btn-accent">نشر البيان فوراً</button>
+
+            </form>
+
+        </div>
+
+
+
+        <!-- المنشورات المعلقة (الصور) -->
+
+        <% if (typeof pendingPosts !== 'undefined' && pendingPosts && pendingPosts.length > 0) { %>
+
+            <h3 style="margin-bottom: 1rem; color:#b45309;">⏳ منشورات تحتاج إلى موافقة (<%= pendingPosts.length %>)</h3>
+
+            <% pendingPosts.forEach(post => { %>
+
+                <div class="post-card" style="border-right: 4px solid #f59e0b;">
+
+                    <p><b><%= post.display_name %></b> (<%= post.national_id %>)</p>
+
+                    <p style="margin-top: 5px;"><%= post.content %></p>
+
+                    <% if (post.file_path) { %>
+
+                        <% if (post.file_type === 'image') { %>
+
+                            <img src="<%= post.file_path %>" style="max-width:200px; border-radius:6px; margin-top:8px;">
+
+                        <% } else if (post.file_type === 'pdf') { %>
+
+                            <a href="<%= post.file_path %>" target="_blank" style="display:block; margin-top:8px;">📄 عرض ملف PDF المرفق</a>
+
+                        <% } %>
+
+                    <% } %>
+
+                    <div class="actions">
+
+                        <form action="/admin/approve-post/<%= post.id %>" method="POST">
+
+                            <button class="btn btn-success">قبول ونشر</button>
+
+                        </form>
+
+                        <form action="/admin/delete-post/<%= post.id %>" method="POST" onsubmit="return confirm('هل أنت تأكد من رفض وحذف هذا المنشور؟');">
+
+                            <button class="btn btn-danger">رفض وحذف</button>
+
+                        </form>
+
+                    </div>
+
+                </div>
+
+            <% }) %>
+
+        <% } %>
+
+
+
+        <!-- جميع المنشورات والتحكم بها -->
+
+        <h3 style="margin-bottom: 1rem;">📝 إدارة كافة منشورات الساحة</h3>
+
+        <% if (typeof allPosts !== 'undefined' && allPosts && allPosts.length > 0) { %>
+
+            <% allPosts.forEach(post => { %>
+
+                <div class="post-card">
+
+                    <div>
+
+                        <b><%= post.display_name %></b>
+
+                        <% if (post.is_pinned) { %><span class="pinned-badge">مثبّت 📌</span><% } %>
+
+                    </div>
+
+                    <p style="margin-top: 5px;"><%= post.content %></p>
+
+                    <% if (post.file_path) { %>
+
+                        <% if (post.file_type === 'image') { %>
+
+                            <img src="<%= post.file_path %>" style="max-width:180px; border-radius:6px; margin-top:5px;">
+
+                        <% } else if (post.file_type === 'pdf') { %>
+
+                            <a href="<%= post.file_path %>" target="_blank" style="display:block; margin-top:5px;">📄 عرض ملف PDF</a>
+
+                        <% } %>
+
+                    <% } %>
+
+
+
+                    <div class="actions">
+
+                        <form action="/admin/toggle-pin/<%= post.id %>" method="POST">
+
+                            <button class="btn btn-warning"><%= post.is_pinned ? 'إلغاء التثبيت' : 'تثبيت المنشور 📌' %></button>
+
+                        </form>
+
+                        <form action="/admin/delete-post/<%= post.id %>" method="POST" onsubmit="return confirm('هل أنت تأكد من حذف هذا المنشور؟');">
+
+                            <button class="btn btn-danger">حذف المنشور</button>
+
+                        </form>
+
+                    </div>
+
+
+
+                    <!-- التعليقات -->
+
+                    <% if (post.comments && post.comments.length > 0) { %>
+
+                        <div style="margin-top: 10px; border-top: 1px solid #f1f5f9; padding-top: 5px;">
+
+                            <small style="color:#64748b;">التعليقات:</small>
+
+                            <% post.comments.forEach(comment => { %>
+
+                                <div class="comment-item">
+
+                                    <span><b><%= comment.display_name %>:</b> <%= comment.content %></span>
+
+                                    <form action="/admin/delete-comment/<%= comment.id %>" method="POST" onsubmit="return confirm('حذف هذا التعليق؟');">
+
+                                        <button style="border:none; background:none; color:#dc2626; cursor:pointer; font-size:0.75rem;">حذف</button>
+
+                                    </form>
+
+                                </div>
+
+                            <% }) %>
+
+                        </div>
+
+                    <% } %>
+
+                </div>
+
+            <% }) %>
+
+        <% } else { %>
+
+            <p style="color:#64748b;">لا توجد منشورات حالياً.</p>
+
+        <% } %>
+
+    </div>
+
+
 
 </body>
-</html>
+
+</html> 
+
