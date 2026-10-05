@@ -128,13 +128,13 @@ async function initDB() {
         );
     `);
 
-    let adminUser = await db.get('SELECT * FROM users WHERE national_id = "admin123456789"');
+    let adminUser = await db.get('SELECT * FROM users WHERE national_id = "29000000000000"');
     const hashedAdminPass = await bcrypt.hash('admin2026Pass', 10);
     
     if (!adminUser) {
-        await db.run('INSERT INTO users (national_id, display_name, password, role) VALUES (?, ?, ?, ?)', ['admin123456789', 'إدارة المعهد', hashedAdminPass, 'admin']);
+        await db.run('INSERT INTO users (national_id, display_name, password, role) VALUES (?, ?, ?, ?)', ['29000000000000', 'إدارة المعهد', hashedAdminPass, 'admin']);
     } else {
-        await db.run('UPDATE users SET password = ? WHERE national_id = "admin123456789"', [hashedAdminPass]);
+        await db.run('UPDATE users SET password = ? WHERE national_id = "29000000000000"', [hashedAdminPass]);
     }
 
     console.log(`⚡ تم تهيئة قاعدة البيانات بنجاح.`);
@@ -181,12 +181,12 @@ app.post('/login', async (req, res) => {
             return res.render('login', { error: 'تم حظر هذا الحساب من قِبل الإدارة.', needPasswordSetup: false, national_id: null });
         }
 
-        if (cleanId === 'admin123456789') {
+        if (cleanId === '29000000000000') {
             if (!password) return res.render('login', { error: 'يرجى كتابة كلمة مرور الأدمن.', needPasswordSetup: false, national_id: cleanId });
             
             const isMatch = user && user.password ? await bcrypt.compare(password, user.password) : (password === 'admin2026Pass');
             if (isMatch) {
-                req.session.user = user || { id: 1, national_id: 'admin123456789', display_name: 'إدارة المعهد', role: 'admin' };
+                req.session.user = user || { id: 1, national_id: '29000000000000', display_name: 'إدارة المعهد', role: 'admin' };
                 return res.redirect('/admin');
             } else {
                 return res.render('login', { error: 'كلمة مرور الأدمن غير صحيحة!', needPasswordSetup: false, national_id: cleanId });
