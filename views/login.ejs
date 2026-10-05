@@ -93,18 +93,18 @@
             margin-bottom: 2rem;
         }
 
-        /* تصميم الشعار الجديد والمحسن */
+        /* تصميم الشعار المكبر والمتوافق ببراعة مع الإطار */
         .logo-box {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 80px;
-            height: 80px;
-            background: linear-gradient(135deg, rgba(59, 130, 246, 0.25), rgba(6, 182, 212, 0.25));
-            border: 1.5px solid rgba(59, 130, 246, 0.4);
-            border-radius: 22px;
+            width: 96px;
+            height: 96px;
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(6, 182, 212, 0.2));
+            border: 2px solid rgba(59, 130, 246, 0.45);
+            border-radius: 26px;
             margin-bottom: 1.25rem;
-            box-shadow: 0 0 25px var(--primary-glow);
+            box-shadow: 0 0 30px var(--primary-glow);
             position: relative;
             overflow: hidden;
         }
@@ -116,21 +116,22 @@
             left: -50%;
             width: 200%;
             height: 200%;
-            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.08), transparent);
+            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
             transform: rotate(45deg);
             pointer-events: none;
         }
 
         .logo-box img {
-            max-height: 52px;
-            max-width: 52px;
+            max-height: 68px;
+            max-width: 68px;
             width: auto;
+            height: auto;
             object-fit: contain;
-            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.35));
         }
 
         .logo-box i {
-            font-size: 2.2rem;
+            font-size: 2.6rem;
             background: linear-gradient(135deg, var(--primary), var(--accent));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
@@ -317,6 +318,15 @@
                 padding: 2rem 1.25rem;
                 border-radius: 20px;
             }
+            .logo-box {
+                width: 84px;
+                height: 84px;
+                border-radius: 22px;
+            }
+            .logo-box img {
+                max-height: 56px;
+                max-width: 56px;
+            }
             h2 { font-size: 1.3rem; }
             p.subtitle { font-size: 0.8rem; }
             input { font-size: 0.9rem; padding: 0.8rem 1rem; }
@@ -329,7 +339,7 @@
     <div class="login-wrapper">
         <div class="login-card">
             
-            <!-- الهيدر والشعار المحسّن -->
+            <!-- الهيدر والشعار المكبر والمضبوط بشياكة -->
             <div class="brand-header">
                 <div class="logo-box">
                     <img src="/logo.png" alt="شعار المعهد" onerror="this.style.display='none'; document.getElementById('fallback-icon').style.display='inline-block';">
@@ -420,7 +430,7 @@
 
             <% } %>
 
-            <!-- الكوبي رايت المُعدّث باسمك -->
+            <!-- الكوبي رايت باسمك الكريم -->
             <div class="footer-note">
                 المعهد العالي للعلوم التجارية والحاسب<br>
                 جميع الحقوق محفوظة © 2026 | Developed by <span>Mahmoud Yosri</span>
