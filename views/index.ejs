@@ -4,66 +4,466 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ساحة المناقشات | المنصة التعليمية</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
             --primary: #0f172a;
             --accent: #2563eb;
-            --bg: #f8fafc;
+            --accent-hover: #1d4ed8;
+            --bg: #f1f5f9;
             --card-bg: #ffffff;
             --border: #e2e8f0;
             --text-main: #0f172a;
             --text-muted: #64748b;
+            --danger: #ef4444;
+            --success: #10b981;
+            --radius-lg: 16px;
+            --radius-md: 10px;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.05);
         }
-        * { box-sizing: border-box; font-family: 'Segoe UI', system-ui, sans-serif; margin: 0; padding: 0; }
-        body { background: var(--bg); color: var(--text-main); padding-bottom: 50px; }
-        
-        header { background: var(--card-bg); border-bottom: 1px solid var(--border); padding: 0.75rem 2rem; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
-        .header-brand { display: flex; align-items: center; gap: 12px; }
-        .header-brand img { height: 45px; width: auto; object-fit: contain; }
-        .header-brand h1 { font-size: 1.1rem; color: var(--primary); font-weight: 700; }
 
-        .user-nav { display: flex; align-items: center; gap: 15px; }
-        .user-badge { font-size: 0.875rem; font-weight: 600; color: #334155; background: #f1f5f9; padding: 0.4rem 0.8rem; border-radius: 20px; border: 1px solid #cbd5e1; }
-        .btn-logout { background: #ef4444; color: white; text-decoration: none; padding: 0.4rem 0.9rem; border-radius: 8px; font-size: 0.85rem; font-weight: 600; transition: opacity 0.2s; }
-        .btn-admin-link { background: var(--accent); color: white; text-decoration: none; padding: 0.4rem 0.9rem; border-radius: 8px; font-size: 0.85rem; font-weight: 600; }
+        * {
+            box-sizing: border-box;
+            font-family: 'Cairo', 'Segoe UI', system-ui, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
 
-        .container { max-width: 720px; margin: 1.5rem auto; padding: 0 1rem; }
+        body {
+            background-color: var(--bg);
+            color: var(--text-main);
+            padding-bottom: 60px;
+        }
 
-        /* شريط البحث */
-        .search-card { background: var(--card-bg); border-radius: 12px; border: 1px solid var(--border); padding: 0.85rem; margin-bottom: 1.25rem; display: flex; gap: 10px; box-shadow: 0 1px 2px rgba(0,0,0,0.03); }
-        .search-card input { flex: 1; border: 1px solid var(--border); border-radius: 8px; padding: 0.6rem 1rem; font-size: 0.9rem; outline: none; }
-        .search-card input:focus { border-color: var(--accent); }
-        .search-card button { background: var(--primary); color: white; border: none; padding: 0 1.25rem; border-radius: 8px; font-weight: 600; cursor: pointer; }
+        /* Header */
+        header {
+            background: var(--card-bg);
+            border-bottom: 1px solid var(--border);
+            padding: 0.8rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+            backdrop-filter: blur(8px);
+        }
 
-        /* بطاقة النشر */
-        .card { background: var(--card-bg); border-radius: 14px; border: 1px solid var(--border); padding: 1.25rem; margin-bottom: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
-        .pinned-card { border: 2px solid #3b82f6; background: #faf5ff; }
-        
-        textarea { width: 100%; border: 1px solid var(--border); border-radius: 10px; padding: 0.85rem; font-size: 0.95rem; outline: none; resize: vertical; min-height: 85px; }
-        textarea:focus { border-color: var(--accent); }
-        .file-upload { margin: 0.85rem 0; font-size: 0.85rem; color: var(--text-muted); display: flex; align-items: center; gap: 10px; }
-        .btn-post { background: var(--accent); color: white; border: none; padding: 0.65rem 1.5rem; border-radius: 8px; font-weight: 700; cursor: pointer; float: left; }
+        .header-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
 
-        .post-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
-        .author-box { display: flex; align-items: center; gap: 8px; }
-        .author { font-weight: 700; color: #1e293b; font-size: 0.95rem; }
-        .role-tag { font-size: 0.7rem; background: #dbeafe; color: #1e40af; padding: 2px 8px; border-radius: 12px; font-weight: 700; }
-        .pin-badge { font-size: 0.75rem; background: #2563eb; color: white; padding: 2px 8px; border-radius: 6px; font-weight: 700; }
-        .date { font-size: 0.75rem; color: var(--text-muted); }
+        .header-brand img {
+            height: 42px;
+            width: auto;
+            object-fit: contain;
+        }
 
-        .post-body { font-size: 0.95rem; line-height: 1.6; margin-bottom: 1rem; color: #334155; }
-        .media-preview img { max-width: 100%; border-radius: 10px; border: 1px solid var(--border); margin-top: 0.5rem; }
-        .pdf-box { display: inline-flex; align-items: center; gap: 8px; background: #fef2f2; color: #991b1b; padding: 0.65rem 1.25rem; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 0.875rem; border: 1px solid #fecaca; }
+        .header-brand h1 {
+            font-size: 1.15rem;
+            color: var(--primary);
+            font-weight: 800;
+        }
 
-        .comments { background: #f8fafc; border-radius: 10px; padding: 0.85rem; margin-top: 1rem; border: 1px solid #f1f5f9; }
-        .comment-item { font-size: 0.875rem; padding: 0.5rem 0; border-bottom: 1px solid #e2e8f0; }
-        .comment-item:last-child { border-bottom: none; }
-        .comment-form { display: flex; gap: 8px; margin-top: 0.75rem; }
-        .comment-form input { flex: 1; padding: 0.55rem; border: 1px solid var(--border); border-radius: 8px; font-size: 0.85rem; }
-        .comment-form button { background: #0284c7; color: white; border: none; padding: 0.55rem 1rem; border-radius: 8px; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
+        .user-nav {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .user-badge {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: #334155;
+            background: #f8fafc;
+            padding: 0.4rem 0.9rem;
+            border-radius: 30px;
+            border: 1px solid #cbd5e1;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-logout {
+            background: #fee2e2;
+            color: #dc2626;
+            text-decoration: none;
+            padding: 0.45rem 1rem;
+            border-radius: var(--radius-md);
+            font-size: 0.85rem;
+            font-weight: 700;
+            transition: all 0.2s;
+        }
+
+        .btn-logout:hover {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-admin-link {
+            background: var(--accent);
+            color: white;
+            text-decoration: none;
+            padding: 0.45rem 1rem;
+            border-radius: var(--radius-md);
+            font-size: 0.85rem;
+            font-weight: 700;
+            transition: background 0.2s;
+        }
+
+        .btn-admin-link:hover {
+            background: var(--accent-hover);
+        }
+
+        /* Container */
+        .container {
+            max-width: 720px;
+            margin: 1.5rem auto;
+            padding: 0 1rem;
+        }
+
+        /* Search Bar */
+        .search-card {
+            background: var(--card-bg);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border);
+            padding: 0.85rem 1.1rem;
+            margin-bottom: 1.25rem;
+            display: flex;
+            gap: 10px;
+            box-shadow: var(--shadow-sm);
+            align-items: center;
+        }
+
+        .search-card input {
+            flex: 1;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 0.65rem 1rem;
+            font-size: 0.9rem;
+            outline: none;
+            transition: border 0.2s;
+        }
+
+        .search-card input:focus {
+            border-color: var(--accent);
+        }
+
+        .search-card button {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.65rem 1.4rem;
+            border-radius: var(--radius-md);
+            font-weight: 700;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .search-card button:hover {
+            opacity: 0.9;
+        }
+
+        /* Post Cards */
+        .card {
+            background: var(--card-bg);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border);
+            padding: 1.25rem;
+            margin-bottom: 1.25rem;
+            box-shadow: var(--shadow-sm);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .pinned-card {
+            border: 2px solid #3b82f6;
+            background: #f0f9ff;
+        }
+
+        /* Create Post Area */
+        textarea {
+            width: 100%;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 0.85rem;
+            font-size: 0.95rem;
+            outline: none;
+            resize: vertical;
+            min-height: 90px;
+            transition: border 0.2s;
+        }
+
+        textarea:focus {
+            border-color: var(--accent);
+        }
+
+        .file-upload {
+            margin: 0.85rem 0;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #f8fafc;
+            padding: 0.6rem 0.9rem;
+            border-radius: var(--radius-md);
+            border: 1px dashed var(--border);
+        }
+
+        .btn-post {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 0.65rem 1.6rem;
+            border-radius: var(--radius-md);
+            font-weight: 700;
+            cursor: pointer;
+            float: left;
+            transition: background 0.2s;
+        }
+
+        .btn-post:hover {
+            background: var(--accent-hover);
+        }
+
+        /* Post Header & Meta */
+        .post-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.85rem;
+        }
+
+        .author-box {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .author {
+            font-weight: 800;
+            color: #1e293b;
+            font-size: 0.98rem;
+        }
+
+        .role-tag {
+            font-size: 0.7rem;
+            background: #dbeafe;
+            color: #1e40af;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-weight: 700;
+        }
+
+        .pin-badge {
+            font-size: 0.72rem;
+            background: #2563eb;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-weight: 700;
+        }
+
+        .meta-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .date {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        /* Report Button */
+        .btn-report {
+            background: transparent;
+            border: none;
+            color: #94a3b8;
+            font-size: 0.8rem;
+            cursor: pointer;
+            padding: 2px 6px;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+
+        .btn-report:hover {
+            color: var(--danger);
+            background: #fef2f2;
+        }
+
+        /* Post Content */
+        .post-body {
+            font-size: 0.98rem;
+            line-height: 1.7;
+            margin-bottom: 1rem;
+            color: #334155;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .media-preview img {
+            max-width: 100%;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border);
+            margin-top: 0.5rem;
+            max-height: 480px;
+            object-fit: contain;
+            width: 100%;
+        }
+
+        .pdf-box {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: #fef2f2;
+            color: #991b1b;
+            padding: 0.65rem 1.25rem;
+            border-radius: var(--radius-md);
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 0.875rem;
+            border: 1px solid #fecaca;
+            transition: background 0.2s;
+        }
+
+        .pdf-box:hover {
+            background: #fee2e2;
+        }
+
+        /* Comments Section */
+        .comments {
+            background: #f8fafc;
+            border-radius: var(--radius-md);
+            padding: 0.85rem;
+            margin-top: 1rem;
+            border: 1px solid #f1f5f9;
+        }
+
+        .comment-item {
+            font-size: 0.88rem;
+            padding: 0.6rem 0;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .comment-item:last-child {
+            border-bottom: none;
+        }
+
+        .comment-content {
+            flex: 1;
+            padding-left: 8px;
+        }
+
+        .comment-form {
+            display: flex;
+            gap: 8px;
+            margin-top: 0.85rem;
+        }
+
+        .comment-form input {
+            flex: 1;
+            padding: 0.6rem 0.8rem;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            font-size: 0.85rem;
+            outline: none;
+        }
+
+        .comment-form input:focus {
+            border-color: var(--accent);
+        }
+
+        .comment-form button {
+            background: #0284c7;
+            color: white;
+            border: none;
+            padding: 0.6rem 1.1rem;
+            border-radius: var(--radius-md);
+            font-size: 0.85rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .comment-form button:hover {
+            background: #0369a1;
+        }
+
+        /* Modal / Dialog for Reporting */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(15, 23, 42, 0.6);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-box {
+            background: white;
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            width: 90%;
+            max-width: 440px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+
+        .modal-box h3 {
+            font-size: 1.1rem;
+            margin-bottom: 0.8rem;
+            color: var(--primary);
+        }
+
+        .modal-box textarea {
+            min-height: 80px;
+            margin-bottom: 1rem;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+
+        .btn-cancel {
+            background: #e2e8f0;
+            color: #475569;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: var(--radius-md);
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .btn-submit-report {
+            background: var(--danger);
+            color: white;
+            border: none;
+            padding: 0.5rem 1.2rem;
+            border-radius: var(--radius-md);
+            font-weight: 700;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
+
     <header>
         <div class="header-brand">
             <img src="/logo.png" alt="شعار المعهد" onerror="this.style.display='none'">
@@ -84,7 +484,7 @@
             <input type="text" name="search" value="<%= search %>" placeholder="🔍 بحث بكلمة مفتاحية أو باسم الطالب...">
             <button type="submit">بحث</button>
             <% if(search) { %>
-                <a href="/" style="align-self: center; font-size: 0.85rem; color: #dc2626; text-decoration: none;">إلغاء</a>
+                <a href="/" style="align-self: center; font-size: 0.85rem; color: var(--danger); text-decoration: none; font-weight: 700;">إلغاء</a>
             <% } %>
         </form>
 
@@ -93,13 +493,20 @@
             <form action="/posts" method="POST" enctype="multipart/form-data" style="overflow: hidden;">
                 <textarea name="content" placeholder="طرح سؤال، استفسار، أو موضوع جديد للطلاب..."></textarea>
                 <div class="file-upload">
-                    📎 إرفاق ملف PDF أو صورة: <input type="file" name="attachment" accept="image/*,application/pdf">
+                    📎 إرفاق ملف PDF أو صورة: 
+                    <input type="file" name="attachment" accept="image/*,application/pdf">
                 </div>
                 <button type="submit" class="btn-post">نشر الموضوع</button>
             </form>
         </div>
 
         <!-- تغذية المنشورات -->
+        <% if(posts.length === 0) { %>
+            <div class="card" style="text-align: center; color: var(--text-muted); padding: 2rem;">
+                لا توجد منشورات متاحة حالياً.
+            </div>
+        <% } %>
+
         <% posts.forEach(post => { %>
             <div class="card <%= post.is_pinned ? 'pinned-card' : '' %>">
                 <div class="post-meta">
@@ -108,9 +515,13 @@
                         <% if(post.role === 'admin') { %><span class="role-tag">إدارة المعهد</span><% } %>
                         <% if(post.is_pinned) { %><span class="pin-badge">📌 مثبت</span><% } %>
                     </div>
-                    <span class="date">
-                        <%= new Date(post.created_at).toLocaleString('ar-EG', { timeZone: 'Africa/Cairo', dateStyle: 'short', timeStyle: 'short' }) %>
-                    </span>
+                    <div class="meta-left">
+                        <span class="date">
+                            <%= new Date(post.created_at).toLocaleString('ar-EG', { timeZone: 'Africa/Cairo', dateStyle: 'short', timeStyle: 'short' }) %>
+                        </span>
+                        <!-- زر الإبلاغ عن منشور -->
+                        <button class="btn-report" onclick="openReportModal('post', <%= post.id %>)" title="إبلاغ عن المحتوى">🚨 إبلاغ</button>
+                    </div>
                 </div>
 
                 <% if(post.content) { %>
@@ -120,24 +531,29 @@
                 <% if(post.file_path) { %>
                     <div class="media-preview">
                         <% if(post.media_status === 'pending') { %>
-                            <div style="background: #fffbeb; color: #b45309; padding: 0.6rem; border-radius: 8px; font-size: 0.85rem; border: 1px dashed #fcd34d;">
+                            <div style="background: #fffbeb; color: #b45309; padding: 0.7rem; border-radius: 8px; font-size: 0.85rem; border: 1px dashed #fcd34d; font-weight: 600;">
                                 ⏳ الصورة قيد مراجعة الإدارة وسوف تظهر للجميع فور اعتمادها.
                             </div>
                         <% } else if(post.file_type === 'image') { %>
-                            <img src="<%= post.file_path %>" alt="صورة مرفقة">
+                            <img src="<%= post.file_path %>" alt="صورة مرفقة" loading="lazy">
                         <% } else if(post.file_type === 'pdf') { %>
                             <a href="<%= post.file_path %>" target="_blank" class="pdf-box">📄 فتح ملف PDF المرفق</a>
                         <% } %>
                     </div>
                 <% } %>
 
+                <!-- التعليقات -->
                 <div class="comments">
                     <% post.comments.forEach(comment => { %>
                         <div class="comment-item">
-                            <b><%= comment.display_name %>:</b> <%= comment.content %>
-                            <span style="font-size: 0.7rem; color: #94a3b8; margin-right: 5px;">
-                                (<%= new Date(comment.created_at).toLocaleString('ar-EG', { timeZone: 'Africa/Cairo', timeStyle: 'short' }) %>)
-                            </span>
+                            <div class="comment-content">
+                                <b><%= comment.display_name %>:</b> <%= comment.content %>
+                                <span style="font-size: 0.7rem; color: #94a3b8; margin-right: 5px;">
+                                    (<%= new Date(comment.created_at).toLocaleString('ar-EG', { timeZone: 'Africa/Cairo', timeStyle: 'short' }) %>)
+                                </span>
+                            </div>
+                            <!-- زر الإبلاغ عن تعليق -->
+                            <button class="btn-report" onclick="openReportModal('comment', <%= comment.id %>)" title="إبلاغ عن التعليق">🚨</button>
                         </div>
                     <% }) %>
 
@@ -149,5 +565,70 @@
             </div>
         <% }) %>
     </div>
+
+    <!-- نافذة الإبلاغ (Modal) -->
+    <div id="reportModal" class="modal-overlay">
+        <div class="modal-box">
+            <h3>🚨 إبلاغ عن محتوى غير لائق</h3>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.8rem;">
+                يرجى توضيح سبب الإبلاغ ليتم مراجعته فوراً من قبل الإدارة.
+            </p>
+            <textarea id="reportReason" placeholder="اكتب سبب الإبلاغ هنا..."></textarea>
+            <div class="modal-actions">
+                <button type="button" class="btn-cancel" onclick="closeReportModal()">إلغاء</button>
+                <button type="button" class="btn-submit-report" onclick="submitReport()">إرسال البلاغ</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentTargetType = null;
+        let currentTargetId = null;
+
+        function openReportModal(type, id) {
+            currentTargetType = type;
+            currentTargetId = id;
+            document.getElementById('reportReason').value = '';
+            document.getElementById('reportModal').style.display = 'flex';
+        }
+
+        function closeReportModal() {
+            document.getElementById('reportModal').style.display = 'none';
+            currentTargetType = null;
+            currentTargetId = null;
+        }
+
+        async function submitReport() {
+            const reason = document.getElementById('reportReason').value.trim();
+            if (!reason) {
+                alert('يرجى كتابة سبب الإبلاغ.');
+                return;
+            }
+
+            try {
+                const response = await fetch('/report', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        target_type: currentTargetType,
+                        target_id: currentTargetId,
+                        reason: reason
+                    })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    alert(data.message || 'تم إرسال البلاغ بنجاح.');
+                    closeReportModal();
+                    window.location.reload();
+                } else {
+                    alert(data.error || 'حدث خطأ أثناء إرسال البلاغ.');
+                }
+            } catch (err) {
+                console.error('Report submission error:', err);
+                alert('تعذر الاتصال بالسيرفر.');
+            }
+        }
+    </script>
 </body>
 </html>
