@@ -1,0 +1,57 @@
+<!-- زر الإبلاغ داخل كارت المنشور / التعليق -->
+<button onclick="openReportModal('post', '<%= post.id %>')" class="text-xs text-rose-400 hover:text-rose-300 flex items-center gap-1">
+    ⚠️ إبلاغ
+</button>
+
+<!-- نافذة المودال للإبلاغ -->
+<div id="reportModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
+        <h3 class="text-xl font-bold text-rose-500 flex items-center gap-2">
+            🚨 إبلاغ عن محتوى مخالف
+        </h3>
+        <p class="text-sm text-slate-300 bg-rose-950/40 border border-rose-800/50 p-3 rounded-lg">
+            <strong>تنبيه هامة:</strong> يتم تسجيل كافة بياناتك (الاسم، الرقم القومي، والتاريخ). في حال كان الإبلاغ كاذباً أو كيدياً، سيتعرض حسابك للحظر النهائي فوراً!
+        </p>
+        <textarea id="reportReason" rows="3" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-slate-100 text-sm focus:outline-none focus:border-cyan-500" placeholder="اكتب سبب الإبلاغ بالتفصيل..."></textarea>
+        
+        <div class="flex justify-end gap-3">
+            <button onclick="closeReportModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-sm">إلغاء</button>
+            <button onclick="submitReport()" class="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-lg text-sm shadow-lg shadow-rose-900/50">تأكيد الإبلاغ</button>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentReportType = null;
+let currentReportId = null;
+
+function openReportModal(type, id) {
+    currentReportType = type;
+    currentReportId = id;
+    document.getElementById('reportModal').classList.remove('hidden');
+}
+
+function closeReportModal() {
+    document.getElementById('reportModal').classList.add('hidden');
+    document.getElementById('reportReason').value = '';
+}
+
+async function submitReport() {
+    const reason = document.getElementById('reportReason').value;
+    if (!reason.trim()) return alert('يرجى كتابة سبب الإبلاغ أولاً.');
+
+    const res = await fetch('/report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ target_type: currentReportType, target_id: currentReportId, reason })
+    });
+
+    const data = await res.json();
+    if (data.success) {
+        alert(data.message);
+        location.reload();
+    } else {
+        alert(data.error || 'حدث خطأ أثناء الإبلاغ.');
+    }
+}
+</script>
