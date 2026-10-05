@@ -11,10 +11,7 @@ const bcrypt = require('bcryptjs');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// 1. تحديد مسار التخزين (دائم على Render أو محلي على جهازك)
-// الكود الجديد الصحيح:
 const DATA_DIR = __dirname;
-// 2. إنشاء مجلد المرفقات داخل مسار التخزين
 const uploadDir = path.join(DATA_DIR, 'uploads');
 if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
@@ -51,7 +48,6 @@ const upload = multer({
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-// ربط مجلد المرفقات والملفات الاستاتيكية
 app.use('/uploads', express.static(uploadDir));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/', express.static(__dirname));
@@ -65,7 +61,6 @@ app.use(session({
 
 let db;
 
-// 3. تهيئة قاعدة البيانات SQLite (في المسار الدائم)
 async function initDB() {
     db = await open({
         filename: path.join(DATA_DIR, 'database.sqlite'),
@@ -85,11 +80,12 @@ async function initDB() {
             national_id TEXT UNIQUE,
             display_name TEXT,
             password TEXT,
-            role TEXT DEFAULT 'student'
+            role TEXT DEFAULT 'student',
+            is_banned INTEGER DEFAULT 0
         );
     `);
 
-    try { await db.exec(`ALTER TABLE users ADD COLUMN password TEXT;`); } catch(e){}
+    try { await db.exec(`ALTER TABLE users ADD COLUMN is_banned INTEGER DEFAULT 0;`); } catch(e){}
 
     await db.exec(`
         CREATE TABLE IF NOT EXISTS posts (
@@ -105,32 +101,51 @@ async function initDB() {
         );
     `);
 
-    try { await db.exec(`ALTER TABLE posts ADD COLUMN is_pinned INTEGER DEFAULT 0;`); } catch(e){}
-
     await db.exec(`
         CREATE TABLE IF NOT EXISTS comments (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             post_id INTEGER,
             user_id INTEGER,
             content TEXT NOT NULL,
+            is_hidden INTEGER DEFAULT 0,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (post_id) REFERENCES posts(id),
             FOREIGN KEY (user_id) REFERENCES users(id)
         );
     `);
 
-    // حساب الأدمن التلقائي
+    // جدول البلاغات الجديد (للمنشورات والتعليقات)
+    await db.exec(`
+        CREATE TABLE IF NOT EXISTS reports (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            reporter_id INTEGER NOT NULL,
+            target_type TEXT NOT NULL, -- 'post' أو 'comment'
+            target_id INTEGER NOT NULL,
+            reason TEXT NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (reporter_id) REFERENCES users(id)
+        );
+    `);
+
+    // تهيئة حساب الأدمن بكلمة مرور مشفرة
     let adminUser = await db.get('SELECT * FROM users WHERE national_id = "admin123"');
     if (!adminUser) {
-        await db.run('INSERT INTO users (national_id, display_name, role) VALUES (?, ?, ?)', ['admin123', 'إدارة المعهد', 'admin']);
+        const hashedAdminPass = await bcrypt.hash('admin2026Pass', 10);
+        await db.run('INSERT INTO users (national_id, display_name, password, role) VALUES (?, ?, ?, ?)', ['admin123', 'إدارة المعهد', hashedAdminPass, 'admin']);
     }
 
-    console.log(`⚡ تم تهيئة قاعدة البيانات بنجاح في المسار: ${path.join(DATA_DIR, 'database.sqlite')}`);
+    console.log(`⚡ تم تهيئة قاعدة البيانات بنجاح مع نظام البلاغات والحظر.`);
 }
 
-// Middlewares للتحقق من الصلاحيات
+// Middleware
 function isAuthenticated(req, res, next) {
-    if (req.session.user) return next();
+    if (req.session.user) {
+        if (req.session.user.is_banned) {
+            req.session.destroy();
+            return res.status(403).send('تم حظر حسابك من استخدام المنصة بسبب مخالفة القوانين.');
+        }
+        return next();
+    }
     res.redirect('/login');
 }
 
@@ -139,9 +154,17 @@ function isAdmin(req, res, next) {
     res.status(403).send('غير مصرح لك بالوصول لهذه الصفحة.');
 }
 
-// --- المسارات (Routes) ---
+// Helper لحذف الملف المرفق
+function deleteFileIfExists(filePath) {
+    if (!filePath) return;
+    const fullPath = path.join(__dirname, filePath);
+    if (fs.existsSync(fullPath)) {
+        try { fs.unlinkSync(fullPath); } catch (e) { console.error('خطأ أثناء حذف الملف:', e); }
+    }
+}
 
-// 1. تسجيل الدخول
+// --- المسارات ---
+
 app.get('/login', (req, res) => {
     res.render('login', { error: null, needPasswordSetup: false, national_id: null });
 });
@@ -150,18 +173,27 @@ app.post('/login', async (req, res) => {
     const { national_id, password } = req.body;
     const cleanId = national_id ? national_id.trim() : '';
 
+    const user = await db.get('SELECT * FROM users WHERE national_id = ?', [cleanId]);
+
+    if (user && user.is_banned) {
+        return res.render('login', { error: 'تم حظر هذا الحساب من قِبل الإدارة.', needPasswordSetup: false, national_id: null });
+    }
+
     if (cleanId === 'admin123') {
-        let adminUser = await db.get('SELECT * FROM users WHERE national_id = "admin123"');
-        req.session.user = adminUser;
-        return res.redirect('/admin');
+        if (!password) return res.render('login', { error: 'يرجى كتابة كلمة مرور الأدمن.', needPasswordSetup: false, national_id: cleanId });
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (isMatch) {
+            req.session.user = user;
+            return res.redirect('/admin');
+        } else {
+            return res.render('login', { error: 'كلمة مرور الأدمن غير صحيحة!', needPasswordSetup: false, national_id: cleanId });
+        }
     }
 
     const allowed = await db.get('SELECT * FROM allowed_students WHERE national_id = ?', [cleanId]);
     if (!allowed) {
         return res.render('login', { error: 'الرقم القومي غير مسجل في القائمة المعتمدة للطلاب.', needPasswordSetup: false, national_id: null });
     }
-
-    let user = await db.get('SELECT * FROM users WHERE national_id = ?', [cleanId]);
 
     if (!user || !user.password) {
         return res.render('login', { 
@@ -185,7 +217,6 @@ app.post('/login', async (req, res) => {
     res.redirect('/');
 });
 
-// 2. تعيين كلمة المرور أول مرة (من قِبل الطالب)
 app.post('/set-password', async (req, res) => {
     const { national_id, password, confirm_password } = req.body;
 
@@ -207,14 +238,14 @@ app.post('/set-password', async (req, res) => {
         await db.run('UPDATE users SET password = ? WHERE national_id = ?', [hashedPassword, national_id]);
     } else {
         const result = await db.run('INSERT INTO users (national_id, display_name, password) VALUES (?, ?, ?)', [national_id, allowed.full_name, hashedPassword]);
-        user = { id: result.lastID, national_id, display_name: allowed.full_name, role: 'student' };
+        user = { id: result.lastID, national_id, display_name: allowed.full_name, role: 'student', is_banned: 0 };
     }
 
     req.session.user = user;
     res.redirect('/');
 });
 
-// 3. الساحة الرئيسية
+// الساحة الرئيسية (تعرض فقط غير المشتكى عليها وغير المعلقة)
 app.get('/', isAuthenticated, async (req, res) => {
     const searchQuery = req.query.search ? `%${req.query.search.trim()}%` : null;
 
@@ -240,7 +271,7 @@ app.get('/', isAuthenticated, async (req, res) => {
             SELECT comments.*, users.display_name 
             FROM comments 
             JOIN users ON comments.user_id = users.id 
-            WHERE comments.post_id = ? 
+            WHERE comments.post_id = ? AND comments.is_hidden = 0
             ORDER BY comments.created_at ASC
         `, [post.id]);
     }
@@ -248,7 +279,7 @@ app.get('/', isAuthenticated, async (req, res) => {
     res.render('index', { user: req.session.user, posts, search: req.query.search || '' });
 });
 
-// 4. إضافة منشور
+// إضافة منشور
 app.post('/posts', isAuthenticated, upload.single('attachment'), async (req, res) => {
     const { content } = req.body;
     let filePath = null;
@@ -277,7 +308,7 @@ app.post('/posts', isAuthenticated, upload.single('attachment'), async (req, res
     res.redirect(req.session.user.role === 'admin' ? '/admin' : '/');
 });
 
-// 5. إضافة تعليق
+// إضافة تعليق
 app.post('/posts/:id/comments', isAuthenticated, async (req, res) => {
     const { content } = req.body;
     if (content.trim()) {
@@ -290,15 +321,50 @@ app.post('/posts/:id/comments', isAuthenticated, async (req, res) => {
     res.redirect('/');
 });
 
-// --- مسارات لوحة التحكم للأدمن ---
+// API الإبلاغ (على منشور أو تعليق)
+app.post('/report', isAuthenticated, async (req, res) => {
+    const { target_type, target_id, reason } = req.body;
+    
+    if (!reason || !reason.trim()) {
+        return res.status(400).json({ error: 'يرجى توضيح سبب الإبلاغ.' });
+    }
 
-// 6. الصفحة الرئيسية للوحة التحكم
+    // تسجيل البلاغ
+    await db.run(
+        'INSERT INTO reports (reporter_id, target_type, target_id, reason) VALUES (?, ?, ?, ?)',
+        [req.session.user.id, target_type, target_id, reason.trim()]
+    );
+
+    // إخفاء العنصر فوراً للمراجعة
+    if (target_type === 'post') {
+        await db.run("UPDATE posts SET media_status = 'flagged' WHERE id = ?", [target_id]);
+    } else if (target_type === 'comment') {
+        await db.run("UPDATE comments SET is_hidden = 1 WHERE id = ?", [target_id]);
+    }
+
+    res.json({ success: true, message: 'تم إرسال البلاغ وإخفاء المحتوى لحين مراجعة الإدارة.' });
+});
+
+// --- لوحة التحكم ---
+
 app.get('/admin', isAdmin, async (req, res) => {
     const pendingPosts = await db.all(`
         SELECT posts.*, users.display_name, users.national_id 
         FROM posts 
         JOIN users ON posts.user_id = users.id 
         WHERE posts.media_status = 'pending'
+    `);
+
+    // جلب كافة البلاغات مع تفاصيل المُبَلِّغ والمحتوى
+    const reports = await db.all(`
+        SELECT reports.*, 
+               reporter.display_name as reporter_name, reporter.national_id as reporter_nid,
+               posts.content as post_content, comments.content as comment_content
+        FROM reports
+        JOIN users reporter ON reports.reporter_id = reporter.id
+        LEFT JOIN posts ON reports.target_type = 'post' AND reports.target_id = posts.id
+        LEFT JOIN comments ON reports.target_type = 'comment' AND reports.target_id = comments.id
+        ORDER BY reports.created_at DESC
     `);
 
     const allPosts = await db.all(`
@@ -308,140 +374,91 @@ app.get('/admin', isAdmin, async (req, res) => {
         ORDER BY posts.is_pinned DESC, posts.created_at DESC
     `);
 
-    for (let post of allPosts) {
-        post.comments = await db.all(`
-            SELECT comments.*, users.display_name, users.national_id 
-            FROM comments 
-            JOIN users ON comments.user_id = users.id 
-            WHERE comments.post_id = ? 
-            ORDER BY comments.created_at ASC
-        `, [post.id]);
-    }
-
     const studentsCount = await db.get('SELECT COUNT(*) as count FROM allowed_students');
 
-    res.render('admin', { user: req.session.user, pendingPosts, allPosts, studentsCount: studentsCount.count });
+    res.render('admin', { user: req.session.user, pendingPosts, reports, allPosts, studentsCount: studentsCount.count });
 });
 
-// 7. صفحة إدارة حسابات الطلاب مع البحث (بالاسم أو الرقم القومي)
-app.get('/admin/students', isAdmin, async (req, res) => {
-    const searchQuery = req.query.search ? `%${req.query.search.trim()}%` : null;
-
-    let sql = `
-        SELECT 
-            allowed_students.national_id, 
-            allowed_students.full_name,
-            users.password
-        FROM allowed_students
-        LEFT JOIN users ON allowed_students.national_id = users.national_id
-    `;
-    let params = [];
-
-    if (searchQuery) {
-        sql += ` WHERE allowed_students.national_id LIKE ? OR allowed_students.full_name LIKE ?`;
-        params.push(searchQuery, searchQuery);
-    }
-
-    const students = await db.all(sql, params);
-
-    res.render('admin-students', { 
-        user: req.session.user, 
-        students, 
-        search: req.query.search || '' 
-    });
-});
-
-// 8. تعيين أو تصفير كلمة مرور طالب
-app.post('/admin/reset-password/:national_id', isAdmin, async (req, res) => {
-    const { new_password } = req.body;
-    const nationalId = req.params.national_id;
-
-    if (new_password && new_password.trim().length >= 6) {
-        const hashedPassword = await bcrypt.hash(new_password.trim(), 10);
-        const existing = await db.get('SELECT * FROM users WHERE national_id = ?', [nationalId]);
-        
-        if (existing) {
-            await db.run('UPDATE users SET password = ? WHERE national_id = ?', [hashedPassword, nationalId]);
-        } else {
-            const allowed = await db.get('SELECT full_name FROM allowed_students WHERE national_id = ?', [nationalId]);
-            await db.run('INSERT INTO users (national_id, display_name, password) VALUES (?, ?, ?)', [nationalId, allowed.full_name, hashedPassword]);
+// التعامل مع البلاغات من لوحة التحكم
+app.post('/admin/reports/:id/dismiss', isAdmin, async (req, res) => {
+    const report = await db.get('SELECT * FROM reports WHERE id = ?', [req.params.id]);
+    if (report) {
+        if (report.target_type === 'post') {
+            await db.run("UPDATE posts SET media_status = 'approved' WHERE id = ?", [report.target_id]);
+        } else if (report.target_type === 'comment') {
+            await db.run("UPDATE comments SET is_hidden = 0 WHERE id = ?", [report.target_id]);
         }
-    } else {
-        // تصفير كلمة المرور ليُنشئها الطالب مجدداً
-        await db.run('UPDATE users SET password = NULL WHERE national_id = ?', [nationalId]);
-    }
-
-    res.redirect('/admin/students');
-});
-
-// 9. تثبيت / إلغاء تثبيت منشور
-app.post('/admin/toggle-pin/:id', isAdmin, async (req, res) => {
-    const post = await db.get('SELECT is_pinned FROM posts WHERE id = ?', [req.params.id]);
-    if (post) {
-        const newStatus = post.is_pinned ? 0 : 1;
-        await db.run('UPDATE posts SET is_pinned = ? WHERE id = ?', [newStatus, req.params.id]);
+        await db.run('DELETE FROM reports WHERE id = ?', [req.params.id]);
     }
     res.redirect('/admin');
 });
 
-// 10. قبول/حذف منشورات وتصريحات
-app.post('/admin/approve/:id', isAdmin, async (req, res) => {
-    await db.run("UPDATE posts SET media_status = 'approved' WHERE id = ?", [req.params.id]);
+// حظر كاتب المحتوى وحذف المنشور/التعليق
+app.post('/admin/reports/:id/ban-user', isAdmin, async (req, res) => {
+    const report = await db.get('SELECT * FROM reports WHERE id = ?', [req.params.id]);
+    if (report) {
+        let userIdToBan = null;
+        if (report.target_type === 'post') {
+            const post = await db.get('SELECT * FROM posts WHERE id = ?', [report.target_id]);
+            if (post) {
+                userIdToBan = post.user_id;
+                deleteFileIfExists(post.file_path);
+                await db.run('DELETE FROM posts WHERE id = ?', [post.id]);
+            }
+        } else if (report.target_type === 'comment') {
+            const comment = await db.get('SELECT * FROM comments WHERE id = ?', [report.target_id]);
+            if (comment) {
+                userIdToBan = comment.user_id;
+                await db.run('DELETE FROM comments WHERE id = ?', [comment.id]);
+            }
+        }
+
+        if (userIdToBan) {
+            await db.run('UPDATE users SET is_banned = 1 WHERE id = ?', [userIdToBan]);
+        }
+        await db.run('DELETE FROM reports WHERE id = ?', [req.params.id]);
+    }
     res.redirect('/admin');
 });
 
 app.post('/admin/delete-post/:id', isAdmin, async (req, res) => {
+    const post = await db.get('SELECT file_path FROM posts WHERE id = ?', [req.params.id]);
+    if (post) deleteFileIfExists(post.file_path);
+    
     await db.run("DELETE FROM posts WHERE id = ?", [req.params.id]);
     await db.run("DELETE FROM comments WHERE post_id = ?", [req.params.id]);
     res.redirect('/admin');
 });
 
-app.post('/admin/delete-comment/:id', isAdmin, async (req, res) => {
-    await db.run("DELETE FROM comments WHERE id = ?", [req.params.id]);
-    res.redirect('/admin');
-});
-
-// 11. إضافة طالب يدوياً أو استيراد ملف إكسيل
-app.post('/admin/add-student', isAdmin, async (req, res) => {
-    const { national_id, full_name } = req.body;
-    if (national_id && full_name) {
-        await db.run('INSERT OR IGNORE INTO allowed_students (national_id, full_name) VALUES (?, ?)', [national_id.trim(), full_name.trim()]);
+app.get('/admin/students', isAdmin, async (req, res) => {
+    const searchQuery = req.query.search ? `%${req.query.search.trim()}%` : null;
+    let sql = `
+        SELECT allowed_students.national_id, allowed_students.full_name, users.password, users.is_banned
+        FROM allowed_students
+        LEFT JOIN users ON allowed_students.national_id = users.national_id
+    `;
+    let params = [];
+    if (searchQuery) {
+        sql += ` WHERE allowed_students.national_id LIKE ? OR allowed_students.full_name LIKE ?`;
+        params.push(searchQuery, searchQuery);
     }
-    res.redirect('/admin');
+    const students = await db.all(sql, params);
+    res.render('admin-students', { user: req.session.user, students, search: req.query.search || '' });
 });
 
-app.post('/admin/import-excel', isAdmin, upload.single('excelFile'), async (req, res) => {
-    if (!req.file) return res.status(400).send('يرجى اختيار ملف الإكسيل.');
-
-    try {
-        const workbook = XLSX.readFile(req.file.path);
-        const sheetName = workbook.SheetNames[0];
-        const sheetData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
-
-        for (let row of sheetData) {
-            const nationalId = row['national_id'] || row['الرقم القومي'] || row['الرقم_القومي'];
-            const fullName = row['full_name'] || row['الاسم'] || row['اسم الطالب'];
-
-            if (nationalId && fullName) {
-                await db.run('INSERT OR IGNORE INTO allowed_students (national_id, full_name) VALUES (?, ?)', [String(nationalId).trim(), String(fullName).trim()]);
-            }
-        }
-
-        fs.unlinkSync(req.file.path);
-        res.redirect('/admin');
-    } catch (err) {
-        console.error(err);
-        res.status(500).send('خطأ أثناء معالجة ملف الإكسيل.');
+app.post('/admin/toggle-ban/:national_id', isAdmin, async (req, res) => {
+    const user = await db.get('SELECT is_banned FROM users WHERE national_id = ?', [req.params.national_id]);
+    if (user) {
+        await db.run('UPDATE users SET is_banned = ? WHERE national_id = ?', [user.is_banned ? 0 : 1, req.params.national_id]);
     }
+    res.redirect('/admin/students');
 });
 
-// 12. تسجيل الخروج
 app.get('/logout', (req, res) => {
     req.session.destroy();
     res.redirect('/login');
 });
 
-// تشغيل السيرفر
 initDB().then(() => {
     app.listen(PORT, () => console.log(`🚀 السيرفر يعمل بكفاءة على المنفذ: ${PORT}`));
 });
