@@ -35,7 +35,6 @@
     <div class="navbar">
         <h2>🛠️ لوحة تحكم الإدارة</h2>
         <div class="nav-links">
-            <!-- زر الانتقال السريع لصفحة الطلاب -->
             <a href="/admin/students" class="btn-nav-students">👥 إدارة حسابات الطلاب</a>
             <a href="/" style="color:white; text-decoration:none;">🏠 الساحة العامة</a>
             <a href="/logout" style="color:#f87171; text-decoration:none;">خروج</a>
@@ -65,7 +64,7 @@
                     <div class="form-group">
                         <input type="text" name="full_name" placeholder="اسم الطالب الثلاثي/الرباعي" required>
                     </div>
-                    <button type="submit" class="btn btn-success">إضافة القائمة</button>
+                    <button type="submit" class="btn btn-success">إضافة الطالب</button>
                 </form>
             </div>
         </div>
@@ -75,7 +74,7 @@
             <h3>📢 نشر إعلان / بيان رسمي من إدارة المعهد</h3>
             <form action="/posts" method="POST" enctype="multipart/form-data">
                 <div class="form-group">
-                    <textarea name="content" rows="3" placeholder="اكتب نص البيان الرسمي هنا..."></textarea>
+                    <textarea name="content" rows="3" placeholder="اكتب نص البيان الرسمي هنا..." required></textarea>
                 </div>
                 <div class="form-group">
                     <input type="file" name="attachment" accept="image/*, application/pdf">
@@ -85,20 +84,24 @@
         </div>
 
         <!-- المنشورات المعلقة -->
-        <% if (pendingPosts.length > 0) { %>
-            <h3 style="margin-bottom: 1rem; color:#b45309;">⏳ صور تحتاج إلى موافقة (<%= pendingPosts.length %>)</h3>
+        <% if (pendingPosts && pendingPosts.length > 0) { %>
+            <h3 style="margin-bottom: 1rem; color:#b45309;">⏳ منشورات تحتاج إلى موافقة (<%= pendingPosts.length %>)</h3>
             <% pendingPosts.forEach(post => { %>
                 <div class="post-card" style="border-right: 4px solid #f59e0b;">
                     <p><b><%= post.display_name %></b> (<%= post.national_id %>)</p>
-                    <p><%= post.content %></p>
+                    <p style="margin-top: 5px;"><%= post.content %></p>
                     <% if (post.file_path) { %>
-                        <img src="<%= post.file_path %>" style="max-width:200px; border-radius:6px; margin-top:8px;">
+                        <% if (post.file_type === 'image') { %>
+                            <img src="<%= post.file_path %>" style="max-width:200px; border-radius:6px; margin-top:8px;">
+                        <% } else if (post.file_type === 'pdf') { %>
+                            <a href="<%= post.file_path %>" target="_blank" style="display:block; margin-top:8px;">📄 عرض ملف PDF المرفق</a>
+                        <% } %>
                     <% } %>
                     <div class="actions">
                         <form action="/admin/approve/<%= post.id %>" method="POST">
                             <button class="btn btn-success">قبول ونشر</button>
                         </form>
-                        <form action="/admin/delete-post/<%= post.id %>" method="POST">
+                        <form action="/admin/delete-post/<%= post.id %>" method="POST" onsubmit="return confirm('هل أنت تأكد من رفض وحذف هذا المنشور؟');">
                             <button class="btn btn-danger">رفض وحذف</button>
                         </form>
                     </div>
@@ -108,46 +111,50 @@
 
         <!-- جميع المنشورات والتحكم بها -->
         <h3 style="margin-bottom: 1rem;">📝 إدارة كافة منشورات الساحة</h3>
-        <% allPosts.forEach(post => { %>
-            <div class="post-card">
-                <div>
-                    <b><%= post.display_name %></b>
-                    <% if (post.is_pinned) { %><span class="pinned-badge">مثبّت 📌</span><% } %>
-                </div>
-                <p style="margin-top: 5px;"><%= post.content %></p>
-                <% if (post.file_path) { %>
-                    <% if (post.file_type === 'image') { %>
-                        <img src="<%= post.file_path %>" style="max-width:180px; border-radius:6px; margin-top:5px;">
-                    <% } else if (post.file_type === 'pdf') { %>
-                        <a href="<%= post.file_path %>" target="_blank" style="display:block; margin-top:5px;">📄 عرض ملف PDF</a>
-                    <% } %>
-                <% } %>
-
-                <div class="actions">
-                    <form action="/admin/toggle-pin/<%= post.id %>" method="POST">
-                        <button class="btn btn-warning"><%= post.is_pinned ? 'إلغاء التثبيت' : 'تثبيت المنشور 📌' %></button>
-                    </form>
-                    <form action="/admin/delete-post/<%= post.id %>" method="POST">
-                        <button class="btn btn-danger">حذف المنشور</button>
-                    </form>
-                </div>
-
-                <!-- التعليقات -->
-                <% if (post.comments && post.comments.length > 0) { %>
-                    <div style="margin-top: 10px; border-top: 1px solid #f1f5f9; padding-top: 5px;">
-                        <small style="color:#64748b;">التعليقات:</small>
-                        <% post.comments.forEach(comment => { %>
-                            <div class="comment-item">
-                                <span><b><%= comment.display_name %>:</b> <%= comment.content %></span>
-                                <form action="/admin/delete-comment/<%= comment.id %>" method="POST">
-                                    <button style="border:none; background:none; color:#dc2626; cursor:pointer; font-size:0.75rem;">حذف</button>
-                                </form>
-                            </div>
-                        <% }) %>
+        <% if (allPosts && allPosts.length > 0) { %>
+            <% allPosts.forEach(post => { %>
+                <div class="post-card">
+                    <div>
+                        <b><%= post.display_name %></b>
+                        <% if (post.is_pinned) { %><span class="pinned-badge">مثبّت 📌</span><% } %>
                     </div>
-                <% } %>
-            </div>
-        <% }) %>
+                    <p style="margin-top: 5px;"><%= post.content %></p>
+                    <% if (post.file_path) { %>
+                        <% if (post.file_type === 'image') { %>
+                            <img src="<%= post.file_path %>" style="max-width:180px; border-radius:6px; margin-top:5px;">
+                        <% } else if (post.file_type === 'pdf') { %>
+                            <a href="<%= post.file_path %>" target="_blank" style="display:block; margin-top:5px;">📄 عرض ملف PDF</a>
+                        <% } %>
+                    <% } %>
+
+                    <div class="actions">
+                        <form action="/admin/toggle-pin/<%= post.id %>" method="POST">
+                            <button class="btn btn-warning"><%= post.is_pinned ? 'إلغاء التثبيت' : 'تثبيت المنشور 📌' %></button>
+                        </form>
+                        <form action="/admin/delete-post/<%= post.id %>" method="POST" onsubmit="return confirm('هل أنت تأكد من حذف هذا المنشور؟');">
+                            <button class="btn btn-danger">حذف المنشور</button>
+                        </form>
+                    </div>
+
+                    <!-- التعليقات -->
+                    <% if (post.comments && post.comments.length > 0) { %>
+                        <div style="margin-top: 10px; border-top: 1px solid #f1f5f9; padding-top: 5px;">
+                            <small style="color:#64748b;">التعليقات:</small>
+                            <% post.comments.forEach(comment => { %>
+                                <div class="comment-item">
+                                    <span><b><%= comment.display_name %>:</b> <%= comment.content %></span>
+                                    <form action="/admin/delete-comment/<%= comment.id %>" method="POST" onsubmit="return confirm('حذف هذا التعليق؟');">
+                                        <button style="border:none; background:none; color:#dc2626; cursor:pointer; font-size:0.75rem;">حذف</button>
+                                    </form>
+                                </div>
+                            <% }) %>
+                        </div>
+                    <% } %>
+                </div>
+            <% }) %>
+        <% } else { %>
+            <p style="color:#64748b;">لا توجد منشورات حالياً.</p>
+        <% } %>
     </div>
 
 </body>
