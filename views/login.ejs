@@ -93,45 +93,31 @@
             margin-bottom: 2rem;
         }
 
-        /* تصميم الشعار المكبر والمتوافق ببراعة مع الإطار */
+        /* تنسيق الشعار المحسن المتوافق مع خلفية الشعار البيضاء وبدون تنافر الحواف */
         .logo-box {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 96px;
-            height: 96px;
-            background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(6, 182, 212, 0.2));
-            border: 2px solid rgba(59, 130, 246, 0.45);
-            border-radius: 26px;
+            width: 105px;
+            height: 105px;
+            background: #ffffff; /* توحيد الخلفية البيضاء لإخفاء تداخل الأطراف */
+            border: 2px solid rgba(59, 130, 246, 0.5);
+            border-radius: 22px; /* زوايا منحنية متناسقة */
             margin-bottom: 1.25rem;
-            box-shadow: 0 0 30px var(--primary-glow);
-            position: relative;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4), 0 0 20px var(--primary-glow);
             overflow: hidden;
-        }
-
-        .logo-box::after {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
-            transform: rotate(45deg);
-            pointer-events: none;
+            padding: 6px;
         }
 
         .logo-box img {
-            max-height: 68px;
-            max-width: 68px;
-            width: auto;
-            height: auto;
+            width: 100%;
+            height: 100%;
             object-fit: contain;
-            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.35));
+            display: block;
         }
 
         .logo-box i {
-            font-size: 2.6rem;
+            font-size: 2.8rem;
             background: linear-gradient(135deg, var(--primary), var(--accent));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
@@ -319,13 +305,8 @@
                 border-radius: 20px;
             }
             .logo-box {
-                width: 84px;
-                height: 84px;
-                border-radius: 22px;
-            }
-            .logo-box img {
-                max-height: 56px;
-                max-width: 56px;
+                width: 90px;
+                height: 90px;
             }
             h2 { font-size: 1.3rem; }
             p.subtitle { font-size: 0.8rem; }
@@ -339,7 +320,7 @@
     <div class="login-wrapper">
         <div class="login-card">
             
-            <!-- الهيدر والشعار المكبر والمضبوط بشياكة -->
+            <!-- الهيدر والشعار المصحح بالكامل -->
             <div class="brand-header">
                 <div class="logo-box">
                     <img src="/logo.png" alt="شعار المعهد" onerror="this.style.display='none'; document.getElementById('fallback-icon').style.display='inline-block';">
