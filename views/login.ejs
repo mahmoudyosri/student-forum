@@ -2,162 +2,468 @@
 <html dir="rtl" lang="ar">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>تسجيل الدخول | المنصة التعليمية</title>
+    <!-- خط القاهرة المصمم للواجهات الاحترافية -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <!-- أيكونات FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
     <style>
         :root {
-            --primary: #0f172a;
-            --accent: #2563eb;
-            --accent-hover: #1d4ed8;
-            --bg-start: #0f172a;
-            --bg-end: #1e293b;
-            --surface: #ffffff;
-            --text: #0f172a;
-            --border: #cbd5e1;
+            --bg-dark: #090d16;
+            --card-bg: rgba(17, 24, 39, 0.75);
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --primary-glow: rgba(59, 130, 246, 0.35);
+            --accent: #06b6d4;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border-color: rgba(255, 255, 255, 0.1);
+            --input-bg: rgba(15, 23, 42, 0.8);
         }
-        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; }
-        body { 
-            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%); 
-            display: flex; 
-            justify-content: center; 
-            align-items: center; 
-            min-height: 100vh; 
-            padding: 1rem; 
+
+        * {
+            box-sizing: border-box;
+            font-family: 'Cairo', sans-serif;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
         }
-        .login-card { 
-            background: var(--surface); 
-            padding: 2.5rem; 
-            border-radius: 16px; 
-            width: 100%; 
-            max-width: 420px; 
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.2); 
-            text-align: center; 
+
+        body {
+            background-color: var(--bg-dark);
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(37, 99, 235, 0.18) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(6, 182, 212, 0.15) 0px, transparent 50%),
+                radial-gradient(at 50% 50%, rgba(15, 23, 42, 0.5) 0px, transparent 100%);
+            background-attachment: fixed;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 1.25rem 1rem;
+            position: relative;
+            overflow-x: hidden;
         }
-        .logo-box { margin-bottom: 1.25rem; }
-        .logo-box img { max-height: 85px; width: auto; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1)); }
-        h2 { color: var(--primary); font-size: 1.35rem; font-weight: 700; margin-bottom: 0.25rem; }
-        p.subtitle { color: #64748b; font-size: 0.85rem; margin-bottom: 1.75rem; }
-        .form-group { text-align: right; margin-bottom: 1.25rem; }
-        label { display: block; font-size: 0.85rem; font-weight: 600; color: #334155; margin-bottom: 0.4rem; }
-        input { 
-            width: 100%; 
-            padding: 0.75rem 1rem; 
-            border: 1.5px solid var(--border); 
-            border-radius: 10px; 
-            font-size: 0.95rem; 
-            transition: all 0.2s ease-in-out; 
-            outline: none; 
+
+        /* شبكة خلفية تقنية ذكية */
+        body::before {
+            content: '';
+            position: absolute;
+            width: 200%;
+            height: 200%;
+            top: -50%;
+            left: -50%;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 24px 24px;
+            pointer-events: none;
+            z-index: 0;
         }
-        input:focus { 
-            border-color: var(--accent); 
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15); 
+
+        .login-wrapper {
+            position: relative;
+            z-index: 10;
+            width: 100%;
+            max-width: 440px;
         }
-        button { 
-            width: 100%; 
-            background: linear-gradient(135deg, #1e3a8a, var(--accent)); 
-            color: white; 
-            border: none; 
-            padding: 0.85rem; 
-            border-radius: 10px; 
-            font-weight: 700; 
-            cursor: pointer; 
-            font-size: 1rem; 
-            transition: all 0.2s ease-in-out; 
+
+        .login-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            padding: 2.5rem 2rem;
+            box-shadow: 
+                0 25px 50px -12px rgba(0, 0, 0, 0.6),
+                0 0 30px rgba(59, 130, 246, 0.1);
+            animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
         }
-        button:hover { 
-            background: linear-gradient(135deg, #1e3a8a, var(--accent-hover));
-            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35); 
-            transform: translateY(-1px);
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
         }
-        button:active {
-            transform: translateY(0);
+
+        .brand-header {
+            text-align: center;
+            margin-bottom: 2rem;
         }
-        .error-msg { 
-            background: #fef2f2; 
-            color: #991b1b; 
-            padding: 0.75rem 1rem; 
-            border-radius: 10px; 
-            border: 1px solid #fecaca; 
-            margin-bottom: 1.25rem; 
-            font-size: 0.85rem; 
-            text-align: right; 
+
+        .logo-box {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 72px;
+            height: 72px;
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(6, 182, 212, 0.2));
+            border: 1px solid rgba(59, 130, 246, 0.4);
+            border-radius: 20px;
+            margin-bottom: 1.25rem;
+            box-shadow: 0 0 20px var(--primary-glow);
+        }
+
+        .logo-box img {
+            max-height: 48px;
+            width: auto;
+            object-fit: contain;
+        }
+
+        .logo-box i {
+            font-size: 2rem;
+            color: var(--primary);
+        }
+
+        h2 {
+            color: var(--text-main);
+            font-size: 1.5rem;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            margin-bottom: 0.35rem;
+        }
+
+        p.subtitle {
+            color: var(--text-muted);
+            font-size: 0.88rem;
+            font-weight: 400;
+        }
+
+        .form-group {
+            text-align: right;
+            margin-bottom: 1.35rem;
+            position: relative;
+        }
+
+        label {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
+            font-size: 0.88rem;
+            font-weight: 700;
+            color: var(--text-main);
+            margin-bottom: 0.5rem;
         }
-        .info-msg { 
-            background: #eff6ff; 
-            color: #1e40af; 
-            padding: 0.85rem 1rem; 
-            border-radius: 10px; 
-            border: 1px solid #bfdbfe; 
-            margin-bottom: 1.25rem; 
-            font-size: 0.85rem; 
-            text-align: right; 
-            line-height: 1.5; 
+
+        label i {
+            color: var(--accent);
+            font-size: 0.95rem;
+        }
+
+        .input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        input {
+            width: 100%;
+            padding: 0.85rem 1.1rem;
+            background: var(--input-bg);
+            border: 1.5px solid var(--border-color);
+            border-radius: 14px;
+            font-size: 0.95rem;
+            color: var(--text-main);
+            transition: all 0.25s ease;
+            outline: none;
+        }
+
+        input::placeholder {
+            color: #64748b;
+        }
+
+        input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px var(--primary-glow);
+            background: rgba(15, 23, 42, 0.95);
+        }
+
+        .toggle-password {
+            position: absolute;
+            left: 12px;
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 6px;
+            font-size: 1.1rem;
+            transition: color 0.2s ease;
+        }
+
+        .toggle-password:hover {
+            color: var(--text-main);
+        }
+
+        /* شريط قياس قوة كلمة المرور */
+        .strength-meter {
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            margin-top: 8px;
+            overflow: hidden;
+            display: none;
+        }
+
+        .strength-bar {
+            height: 100%;
+            width: 0%;
+            transition: all 0.3s ease;
+            border-radius: 2px;
+        }
+
+        button.btn-primary {
+            width: 100%;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            color: #ffffff;
+            border: none;
+            padding: 0.95rem 1.5rem;
+            border-radius: 14px;
+            font-weight: 800;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 20px -5px var(--primary-glow);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 0.5rem;
+        }
+
+        button.btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 25px -5px rgba(59, 130, 246, 0.5);
+            background: linear-gradient(135deg, var(--primary-hover), var(--accent));
+        }
+
+        button.btn-primary:active {
+            transform: translateY(0);
+        }
+
+        /* الرسائل والتنبهات */
+        .alert-box {
+            padding: 1rem 1.1rem;
+            border-radius: 14px;
+            font-size: 0.88rem;
+            margin-bottom: 1.5rem;
+            text-align: right;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            line-height: 1.6;
+            animation: fadeIn 0.4s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .alert-error {
+            background: rgba(239, 68, 68, 0.12);
+            color: #fca5a5;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .alert-info {
+            background: rgba(6, 182, 212, 0.12);
+            color: #67e8f9;
+            border: 1px solid rgba(6, 182, 212, 0.3);
+        }
+
+        .alert-box i {
+            font-size: 1.2rem;
+            margin-top: 2px;
+            flex-shrink: 0;
+        }
+
+        .footer-note {
+            text-align: center;
+            margin-top: 1.75rem;
+            color: #64748b;
+            font-size: 0.78rem;
+        }
+
+        /* استجابة الشاشات الصغيرة للموبايل */
+        @media (max-width: 480px) {
+            .login-card {
+                padding: 2rem 1.25rem;
+                border-radius: 20px;
+            }
+            h2 { font-size: 1.3rem; }
+            p.subtitle { font-size: 0.8rem; }
+            input { font-size: 0.9rem; padding: 0.8rem 1rem; }
+            button.btn-primary { padding: 0.85rem 1.2rem; font-size: 0.95rem; }
         }
     </style>
 </head>
 <body>
-    <div class="login-card">
-        <div class="logo-box">
-            <img src="/logo.png" alt="شعار المعهد" onerror="this.style.display='none'">
-        </div>
-        <h2>المنصة التعليمية للمناقشات</h2>
-        <p class="subtitle">بوابة التواصل والتبادل العلمي للطلاب والإدارة</p>
 
-        <% if (error) { %>
-            <div class="error-msg">⚠️ <span><%= error %></span></div>
-        <% } %>
-
-        <% if (needPasswordSetup) { %>
-            <div class="info-msg">
-                👋 أهلاً بك <b><%= studentName %></b><br>
-                يرجى إعداد كلمة مرور خاصة بك لاستخدامها في الدخول المستقبلي.
+    <div class="login-wrapper">
+        <div class="login-card">
+            
+            <!-- الهيدر والشعار -->
+            <div class="brand-header">
+                <div class="logo-box">
+                    <img src="/logo.png" alt="شعار المعهد" onerror="this.style.display='none'; document.getElementById('fallback-icon').style.display='block';">
+                    <i class="fa-solid fa-graduation-cap" id="fallback-icon" style="display: none;"></i>
+                </div>
+                <h2>المنصة التعليمية للمناقشات</h2>
+                <p class="subtitle">بوابة التواصل والتبادل العلمي الذكية</p>
             </div>
 
-            <form action="/set-password" method="POST" onsubmit="return validatePasswordMatch()">
-                <input type="hidden" name="national_id" value="<%= national_id %>">
+            <!-- رسالة الخطأ -->
+            <% if (error) { %>
+                <div class="alert-box alert-error">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div><%= error %></div>
+                </div>
+            <% } %>
+
+            <!-- نماذج التسجيل -->
+            <% if (needPasswordSetup) { %>
                 
-                <div class="form-group">
-                    <label>أنشئ كلمة المرور:</label>
-                    <input type="password" id="pass" name="password" placeholder="6 أحرف أو أرقام على الأقل" required minlength="6">
+                <!-- رسالة ترحيبية للمرة الأولى -->
+                <div class="alert-box alert-info">
+                    <i class="fa-solid fa-hand-wave"></i>
+                    <div>
+                        أهلاً بك <b><%= studentName %></b> 👋<br>
+                        يرجى تعيين كلمة مرور حساسة للبدء في استخدام المنصة.
+                    </div>
                 </div>
 
-                <div class="form-group">
-                    <label>تأكيد كلمة المرور:</label>
-                    <input type="password" id="confirm_pass" name="confirm_password" placeholder="أعد كتابة كلمة المرور" required minlength="6">
-                </div>
+                <form action="/set-password" method="POST" onsubmit="return validatePasswordMatch()">
+                    <input type="hidden" name="national_id" value="<%= national_id %>">
+                    
+                    <div class="form-group">
+                        <label><i class="fa-solid fa-key"></i> أنشئ كلمة المرور:</label>
+                        <div class="input-wrapper">
+                            <input type="password" id="pass" name="password" placeholder="6 أحرف/أرقام على الأقل" required minlength="6" oninput="checkStrength(this.value)">
+                            <button type="button" class="toggle-password" onclick="togglePass('pass', this)">
+                                <i class="fa-regular fa-eye"></i>
+                            </button>
+                        </div>
+                        <div class="strength-meter" id="strengthMeter">
+                            <div class="strength-bar" id="strengthBar"></div>
+                        </div>
+                    </div>
 
-                <button type="submit">حفظ كلمة المرور والدخول 🚀</button>
-            </form>
+                    <div class="form-group">
+                        <label><i class="fa-solid fa-lock"></i> تأكيد كلمة المرور:</label>
+                        <div class="input-wrapper">
+                            <input type="password" id="confirm_pass" name="confirm_password" placeholder="أعد كتابة كلمة المرور" required minlength="6">
+                            <button type="button" class="toggle-password" onclick="togglePass('confirm_pass', this)">
+                                <i class="fa-regular fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
 
-            <script>
-                function validatePasswordMatch() {
-                    const pass = document.getElementById('pass').value;
-                    const confirmPass = document.getElementById('confirm_pass').value;
-                    if (pass !== confirmPass) {
-                        alert('كلمتا المرور غير متطابقتين، يرجى التأكد وإعادة المحاولة.');
-                        return false;
-                    }
-                    return true;
-                }
-            </script>
-        <% } else { %>
-            <form action="/login" method="POST">
-                <div class="form-group">
-                    <label>الرقم القومي:</label>
-                    <input type="text" name="national_id" value="<%= national_id || '' %>" placeholder="أدخل الرقم القومي الخاص بك (14 رقم)" required maxlength="14" pattern="[0-9]{14}" inputmode="numeric" title="يرجى إدخال 14 رقم باللغة الإنجليزية/الأرقام">
-                </div>
+                    <button type="submit" class="btn-primary">
+                        <span>حفظ كلمة المرور والدخول</span>
+                        <i class="fa-solid fa-rocket"></i>
+                    </button>
+                </form>
 
-                <div class="form-group">
-                    <label>كلمة المرور:</label>
-                    <input type="password" name="password" placeholder="أدخل كلمة المرور (في حال التسجيل المسبق)">
-                </div>
+            <% } else { %>
 
-                <button type="submit">تسجيل الدخول للمنصة</button>
-            </form>
-        <% } %>
+                <!-- نموذج الدخول العادي -->
+                <form action="/login" method="POST">
+                    <div class="form-group">
+                        <label><i class="fa-solid fa-id-card"></i> الرقم القومي:</label>
+                        <div class="input-wrapper">
+                            <input type="text" name="national_id" id="national_id_input" value="<%= national_id || '' %>" placeholder="أدخل الرقم القومي (14 رقم)" required maxlength="14" pattern="[0-9]{14}" inputmode="numeric" title="يرجى إدخال 14 رقم إنجليزي" oninput="cleanArabicNumbers(this)">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label><i class="fa-solid fa-lock"></i> كلمة المرور:</label>
+                        <div class="input-wrapper">
+                            <input type="password" name="password" id="login_pass" placeholder="أدخل كلمة المرور">
+                            <button type="button" class="toggle-password" onclick="togglePass('login_pass', this)">
+                                <i class="fa-regular fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn-primary">
+                        <span>تسجيل الدخول للمنصة</span>
+                        <i class="fa-solid fa-arrow-left"></i>
+                    </button>
+                </form>
+
+            <% } %>
+
+            <div class="footer-note">
+                جميع الحقوق محفوظة © المعهد العالي للعلوم التجارية والحاسب
+            </div>
+
+        </div>
     </div>
+
+    <!-- السكريبتات والتفاعلات -->
+    <script>
+        // إظهار وإخفاء كلمة المرور
+        function togglePass(inputId, btn) {
+            const input = document.getElementById(inputId);
+            const icon = btn.querySelector('i');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.className = 'fa-regular fa-eye-slash';
+            } else {
+                input.type = 'password';
+                icon.className = 'fa-regular fa-eye';
+            }
+        }
+
+        // تحويل الأرقام العربية إلى أرقام إنجليزية أوتوماتيكياً
+        function cleanArabicNumbers(input) {
+            const arabicNumbers = [/٠/g, /١/g, /٢/g, /٣/g, /٤/g, /٥/g, /٦/g, /٧/g, /٨/g, /٩/g];
+            let val = input.value;
+            for (let i = 0; i < 10; i++) {
+                val = val.replace(arabicNumbers[i], i);
+            }
+            input.value = val.replace(/[^0-9]/g, '');
+        }
+
+        // قياس قوة كلمة المرور
+        function checkStrength(val) {
+            const meter = document.getElementById('strengthMeter');
+            const bar = document.getElementById('strengthBar');
+            if (!meter || !bar) return;
+
+            if (val.length === 0) {
+                meter.style.display = 'none';
+                return;
+            }
+
+            meter.style.display = 'block';
+            let score = 0;
+            if (val.length >= 6) score += 33;
+            if (val.length >= 8) score += 33;
+            if (/[A-Z]/.test(val) || /[0-9]/.test(val) && /[^A-Za-z0-9]/.test(val)) score += 34;
+
+            bar.style.width = score + '%';
+            if (score <= 33) {
+                bar.style.background = '#ef4444';
+            } else if (score <= 66) {
+                bar.style.background = '#f59e0b';
+            } else {
+                bar.style.background = '#10b981';
+            }
+        }
+
+        // التحقق من التطابق قبل الإرسال
+        function validatePasswordMatch() {
+            const pass = document.getElementById('pass').value;
+            const confirmPass = document.getElementById('confirm_pass').value;
+            if (pass !== confirmPass) {
+                alert('كلمتا المرور غير متطابقتين، يرجى التأكد وإعادة المحاولة.');
+                return false;
+            }
+            return true;
+        }
+    </script>
 </body>
 </html>
