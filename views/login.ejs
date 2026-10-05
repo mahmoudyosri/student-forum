@@ -93,28 +93,47 @@
             margin-bottom: 2rem;
         }
 
+        /* تصميم الشعار الجديد والمحسن */
         .logo-box {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 72px;
-            height: 72px;
-            background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(6, 182, 212, 0.2));
-            border: 1px solid rgba(59, 130, 246, 0.4);
-            border-radius: 20px;
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.25), rgba(6, 182, 212, 0.25));
+            border: 1.5px solid rgba(59, 130, 246, 0.4);
+            border-radius: 22px;
             margin-bottom: 1.25rem;
-            box-shadow: 0 0 20px var(--primary-glow);
+            box-shadow: 0 0 25px var(--primary-glow);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .logo-box::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.08), transparent);
+            transform: rotate(45deg);
+            pointer-events: none;
         }
 
         .logo-box img {
-            max-height: 48px;
+            max-height: 52px;
+            max-width: 52px;
             width: auto;
             object-fit: contain;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
         }
 
         .logo-box i {
-            font-size: 2rem;
-            color: var(--primary);
+            font-size: 2.2rem;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
 
         h2 {
@@ -284,6 +303,12 @@
             margin-top: 1.75rem;
             color: #64748b;
             font-size: 0.78rem;
+            line-height: 1.5;
+        }
+
+        .footer-note span {
+            color: var(--accent);
+            font-weight: 600;
         }
 
         /* استجابة الشاشات الصغيرة للموبايل */
@@ -304,10 +329,10 @@
     <div class="login-wrapper">
         <div class="login-card">
             
-            <!-- الهيدر والشعار -->
+            <!-- الهيدر والشعار المحسّن -->
             <div class="brand-header">
                 <div class="logo-box">
-                    <img src="/logo.png" alt="شعار المعهد" onerror="this.style.display='none'; document.getElementById('fallback-icon').style.display='block';">
+                    <img src="/logo.png" alt="شعار المعهد" onerror="this.style.display='none'; document.getElementById('fallback-icon').style.display='inline-block';">
                     <i class="fa-solid fa-graduation-cap" id="fallback-icon" style="display: none;"></i>
                 </div>
                 <h2>المنصة التعليمية للمناقشات</h2>
@@ -395,8 +420,10 @@
 
             <% } %>
 
+            <!-- الكوبي رايت المُعدّث باسمك -->
             <div class="footer-note">
-                جميع الحقوق محفوظة © المعهد العالي للعلوم التجارية والحاسب
+                المعهد العالي للعلوم التجارية والحاسب<br>
+                جميع الحقوق محفوظة © 2026 | Developed by <span>Mahmoud Yosri</span>
             </div>
 
         </div>
