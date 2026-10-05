@@ -10,42 +10,69 @@
         body { background: var(--bg); color: #1e293b; padding-bottom: 50px; }
         .navbar { background: var(--primary); color: white; padding: 0.85rem 2rem; display: flex; justify-content: space-between; align-items: center; }
         .container { max-width: 1000px; margin: 2rem auto; padding: 0 1rem; }
-        .card { background: white; border-radius: 12px; border: 1px solid #e2e8f0; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.03); }
-        .search-box { display: flex; gap: 10px; margin-bottom: 1.5rem; }
-        .search-box input { flex: 1; padding: 0.6rem 1rem; border: 1px solid var(--border); border-radius: 8px; font-size: 0.95rem; }
-        .search-box button { background: var(--accent); color: white; border: none; padding: 0.6rem 1.2rem; border-radius: 8px; cursor: pointer; font-weight: 600; }
-        .search-box a { background: #64748b; color: white; border: none; padding: 0.6rem 1rem; border-radius: 8px; text-decoration: none; font-size: 0.9rem; display: flex; align-items: center; }
-        table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
+        .card { background: white; border-radius: 12px; border: 1px solid #e2e8f0; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.03); }
+        table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
         th, td { text-align: right; padding: 0.75rem 1rem; border-bottom: 1px solid #e2e8f0; font-size: 0.9rem; }
-        th { background: #f1f5f9; color: #334155; }
-        .status-badge { padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 700; }
-        .status-active { background: #dcfce7; color: #15803d; }
-        .status-pending { background: #fef3c7; color: #b45309; }
-        .action-form { display: flex; gap: 6px; align-items: center; }
-        .action-form input { padding: 0.35rem 0.6rem; border: 1px solid var(--border); border-radius: 6px; font-size: 0.8rem; width: 140px; }
-        .btn { border: none; padding: 0.35rem 0.75rem; border-radius: 6px; font-weight: 600; cursor: pointer; color: white; font-size: 0.8rem; }
-        .btn-accent { background: var(--accent); }
-        .btn-danger { background: #dc2626; }
+        th { background: #f1f5f9; color: #475569; font-weight: 700; }
+        .badge-banned { background: #fee2e2; color: #dc2626; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 0.75rem; }
+        .badge-active { background: #dcfce7; color: #16a34a; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 0.75rem; }
+        .btn { border: none; padding: 0.4rem 0.8rem; border-radius: 6px; font-weight: 600; cursor: pointer; color: white; font-size: 0.8rem; }
+        .btn-unban { background: #16a34a; }
+        .btn-ban { background: #dc2626; }
+        .btn-reset { background: #d97706; }
+        .search-box { display: flex; gap: 10px; margin-bottom: 1rem; }
+        .search-box input { flex: 1; padding: 0.6rem; border: 1px solid var(--border); border-radius: 6px; }
     </style>
 </head>
 <body>
+
     <div class="navbar">
-        <h2>👥 قائمة الطلاب وحساباتهم</h2>
+        <h2>👥 إدارة حسابات الطلاب والظبط</h2>
         <div>
-            <a href="/admin" style="color:white; text-decoration:none; margin-left:15px;">🔙 العودة للوحة التحكم</a>
-            <a href="/logout" style="color:#f87171; text-decoration:none;">خروج</a>
+            <a href="/admin" style="color:white; text-decoration:none; margin-left: 15px;">🛠️ لوحة التحكم</a>
+            <a href="/" style="color:white; text-decoration:none;">🏠 الساحة</a>
         </div>
     </div>
 
     <div class="container">
+
+        <!-- قسم الحسابات المحظورة -->
+        <% if (typeof bannedUsers !== 'undefined' && bannedUsers && bannedUsers.length > 0) { %>
+            <div class="card" style="border: 2px solid #ef4444;">
+                <h3 style="color: #dc2626; margin-bottom: 0.5rem;">🚫 قائمة الحسابات المحظورة حالياً (<%= bannedUsers.length %>)</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>الاسم</th>
+                            <th>الرقم القومي</th>
+                            <th>سبب الحظر</th>
+                            <th>الجرام / الإجراء</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% bannedUsers.forEach(bUser => { %>
+                            <tr>
+                                <td><b><%= bUser.display_name %></b></td>
+                                <td><%= bUser.national_id %></td>
+                                <td style="color: #b91c1c;"><%= bUser.ban_reason || 'غير محدد' %></td>
+                                <td>
+                                    <form action="/admin/toggle-ban/<%= bUser.national_id %>" method="POST">
+                                        <button class="btn btn-unban">🔓 فك الحظر عن الطالب</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        <% }) %>
+                    </tbody>
+                </table>
+            </div>
+        <% } %>
+
+        <!-- بحث وجدول جميع الطلاب -->
         <div class="card">
-            <!-- شريط البحث بالاسم أو الرقم القومي -->
+            <h3>🔍 البحث في قائمة الطلاب المعتمدين</h3>
             <form action="/admin/students" method="GET" class="search-box">
-                <input type="text" name="search" placeholder="ابحث باسم الطالب أو بالرقم القومي..." value="<%= search %>">
-                <button type="submit">بحث</button>
-                <% if (search) { %>
-                    <a href="/admin/students">إلغاء البحث</a>
-                <% } %>
+                <input type="text" name="search" value="<%= search %>" placeholder="ابحث بالاسم أو الرقم القومي...">
+                <button type="submit" class="btn" style="background: var(--accent);">بحث</button>
             </form>
 
             <table>
@@ -53,32 +80,36 @@
                     <tr>
                         <th>الرقم القومي</th>
                         <th>اسم الطالب</th>
-                        <th>حالة كلمة المرور</th>
-                        <th>إعادة تعيين / تغيير كلمة المرور</th>
+                        <th>حالة الحساب</th>
+                        <th>إعادة ضبط كلمة السر</th>
+                        <th>حظر الطالب</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <% if (students.length === 0) { %>
-                        <tr>
-                            <td colspan="4" style="text-align: center; padding: 2rem; color: #64748b;">لا توجد نتائج تطابق البحث.</td>
-                        </tr>
-                    <% } %>
                     <% students.forEach(student => { %>
                         <tr>
-                            <td><b><%= student.national_id %></b></td>
-                            <td><%= student.full_name %></td>
+                            <td><%= student.national_id %></td>
+                            <td><b><%= student.full_name %></b></td>
                             <td>
-                                <% if (student.password) { %>
-                                    <span class="status-badge status-active">مُفعلة (مشفرة)</span>
+                                <% if (student.is_banned) { %>
+                                    <span class="badge-banned">محظور</span>
                                 <% } else { %>
-                                    <span class="status-badge status-pending">لم تُنشأ بعد</span>
+                                    <span class="badge-active">نشط</span>
                                 <% } %>
                             </td>
                             <td>
-                                <form action="/admin/reset-password/<%= student.national_id %>" method="POST" class="action-form">
-                                    <input type="text" name="new_password" placeholder="كلمة جديدة (اختياري)">
-                                    <button type="submit" class="btn btn-accent">تعيين</button>
-                                    <button type="submit" onclick="this.form.new_password.value=''" class="btn btn-danger" title="تصفير ليُنشئها الطالب بنفسه">تصفير الحساب</button>
+                                <form action="/admin/reset-password/<%= student.national_id %>" method="POST" onsubmit="return confirm('إعادة ضبط كلمة مرور الطالب؟');">
+                                    <button class="btn btn-reset">تصفير كلمة السر</button>
+                                </form>
+                            </td>
+                            <td>
+                                <form action="/admin/toggle-ban/<%= student.national_id %>" method="POST">
+                                    <% if (student.is_banned) { %>
+                                        <button class="btn btn-unban">فك الحظر</button>
+                                    <% } else { %>
+                                        <input type="hidden" name="ban_reason" value="حظر يدوي من الإدارة">
+                                        <button class="btn btn-ban" onclick="return confirm('حظر هذا الطالب؟');">حظر 🚫</button>
+                                    <% } %>
                                 </form>
                             </td>
                         </tr>
@@ -87,5 +118,7 @@
             </table>
         </div>
     </div>
+
 </body>
 </html>
+``` <FollowUp label="هل تم رفع الملفات واختبار ميزة حظر المُبَلِّغ الكاذب وفك الحظر؟" query="نعم، تم الاختبار بنجاح."/>
