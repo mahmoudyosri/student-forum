@@ -114,12 +114,11 @@ async function initDB() {
         );
     `);
 
-    // جدول البلاغات الجديد (للمنشورات والتعليقات)
     await db.exec(`
         CREATE TABLE IF NOT EXISTS reports (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             reporter_id INTEGER NOT NULL,
-            target_type TEXT NOT NULL, -- 'post' أو 'comment'
+            target_type TEXT NOT NULL,
             target_id INTEGER NOT NULL,
             reason TEXT NOT NULL,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -127,22 +126,24 @@ async function initDB() {
         );
     `);
 
-    // تهيئة حساب الأدمن بكلمة مرور مشفرة
+    // تهيئة الأدمن وتحديث كلمة المرور بآمان
     let adminUser = await db.get('SELECT * FROM users WHERE national_id = "admin123"');
+    const hashedAdminPass = await bcrypt.hash('admin2026Pass', 10);
+    
     if (!adminUser) {
-        const hashedAdminPass = await bcrypt.hash('admin2026Pass', 10);
         await db.run('INSERT INTO users (national_id, display_name, password, role) VALUES (?, ?, ?, ?)', ['admin123', 'إدارة المعهد', hashedAdminPass, 'admin']);
+    } else {
+        await db.run('UPDATE users SET password = ? WHERE national_id = "admin123"', [hashedAdminPass]);
     }
 
-    console.log(`⚡ تم تهيئة قاعدة البيانات بنجاح مع نظام البلاغات والحظر.`);
+    console.log(`⚡ تم تهيئة قاعدة البيانات بنجاح.`);
 }
 
-// Middleware
 function isAuthenticated(req, res, next) {
     if (req.session.user) {
         if (req.session.user.is_banned) {
             req.session.destroy();
-            return res.status(403).send('تم حظر حسابك من استخدام المنصة بسبب مخالفة القوانين.');
+            return res.status(403).send('تم حظر حسابك من استخدام المنصة.');
         }
         return next();
     }
@@ -151,70 +152,77 @@ function isAuthenticated(req, res, next) {
 
 function isAdmin(req, res, next) {
     if (req.session.user && req.session.user.role === 'admin') return next();
-    res.status(403).send('غير مصرح لك بالوصول لهذه الصفحة.');
+    res.status(403).send('غير مصرح لك بالوصول.');
 }
 
-// Helper لحذف الملف المرفق
 function deleteFileIfExists(filePath) {
     if (!filePath) return;
     const fullPath = path.join(__dirname, filePath);
     if (fs.existsSync(fullPath)) {
-        try { fs.unlinkSync(fullPath); } catch (e) { console.error('خطأ أثناء حذف الملف:', e); }
+        try { fs.unlinkSync(fullPath); } catch (e) { console.error('خطأ حذف الملف:', e); }
     }
 }
 
-// --- المسارات ---
+// --- Routes ---
 
 app.get('/login', (req, res) => {
     res.render('login', { error: null, needPasswordSetup: false, national_id: null });
 });
 
 app.post('/login', async (req, res) => {
-    const { national_id, password } = req.body;
-    const cleanId = national_id ? national_id.trim() : '';
+    try {
+        const { national_id, password } = req.body;
+        const cleanId = national_id ? national_id.trim() : '';
 
-    const user = await db.get('SELECT * FROM users WHERE national_id = ?', [cleanId]);
+        const user = await db.get('SELECT * FROM users WHERE national_id = ?', [cleanId]);
 
-    if (user && user.is_banned) {
-        return res.render('login', { error: 'تم حظر هذا الحساب من قِبل الإدارة.', needPasswordSetup: false, national_id: null });
-    }
-
-    if (cleanId === 'admin123') {
-        if (!password) return res.render('login', { error: 'يرجى كتابة كلمة مرور الأدمن.', needPasswordSetup: false, national_id: cleanId });
-        const isMatch = await bcrypt.compare(password, user.password);
-        if (isMatch) {
-            req.session.user = user;
-            return res.redirect('/admin');
-        } else {
-            return res.render('login', { error: 'كلمة مرور الأدمن غير صحيحة!', needPasswordSetup: false, national_id: cleanId });
+        if (user && user.is_banned) {
+            return res.render('login', { error: 'تم حظر هذا الحساب من قِبل الإدارة.', needPasswordSetup: false, national_id: null });
         }
-    }
 
-    const allowed = await db.get('SELECT * FROM allowed_students WHERE national_id = ?', [cleanId]);
-    if (!allowed) {
-        return res.render('login', { error: 'الرقم القومي غير مسجل في القائمة المعتمدة للطلاب.', needPasswordSetup: false, national_id: null });
-    }
+        // 1. حساب الأدمن
+        if (cleanId === 'admin123') {
+            if (!password) return res.render('login', { error: 'يرجى كتابة كلمة مرور الأدمن.', needPasswordSetup: false, national_id: cleanId });
+            
+            const isMatch = user && user.password ? await bcrypt.compare(password, user.password) : (password === 'admin2026Pass');
+            if (isMatch) {
+                req.session.user = user || { national_id: 'admin123', display_name: 'إدارة المعهد', role: 'admin' };
+                return res.redirect('/admin');
+            } else {
+                return res.render('login', { error: 'كلمة مرور الأدمن غير صحيحة!', needPasswordSetup: false, national_id: cleanId });
+            }
+        }
 
-    if (!user || !user.password) {
-        return res.render('login', { 
-            error: null, 
-            needPasswordSetup: true, 
-            national_id: cleanId,
-            studentName: allowed.full_name 
-        });
-    }
+        // 2. حسابات الطلاب
+        const allowed = await db.get('SELECT * FROM allowed_students WHERE national_id = ?', [cleanId]);
+        if (!allowed) {
+            return res.render('login', { error: 'الرقم القومي غير مسجل في القائمة المعتمدة للطلاب.', needPasswordSetup: false, national_id: null });
+        }
 
-    if (!password) {
-        return res.render('login', { error: 'يرجى كتابة كلمة المرور.', needPasswordSetup: false, national_id: cleanId });
-    }
+        if (!user || !user.password) {
+            return res.render('login', { 
+                error: null, 
+                needPasswordSetup: true, 
+                national_id: cleanId,
+                studentName: allowed.full_name 
+            });
+        }
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-        return res.render('login', { error: 'كلمة المرور غير صحيحة!', needPasswordSetup: false, national_id: cleanId });
-    }
+        if (!password) {
+            return res.render('login', { error: 'يرجى كتابة كلمة المرور.', needPasswordSetup: false, national_id: cleanId });
+        }
 
-    req.session.user = user;
-    res.redirect('/');
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) {
+            return res.render('login', { error: 'كلمة المرور غير صحيحة!', needPasswordSetup: false, national_id: cleanId });
+        }
+
+        req.session.user = user;
+        res.redirect('/');
+    } catch (err) {
+        console.error('Login Error:', err);
+        res.render('login', { error: 'حدث خطأ غير متوقع أثناء تسجيل الدخول.', needPasswordSetup: false, national_id: null });
+    }
 });
 
 app.post('/set-password', async (req, res) => {
@@ -245,7 +253,6 @@ app.post('/set-password', async (req, res) => {
     res.redirect('/');
 });
 
-// الساحة الرئيسية (تعرض فقط غير المشتكى عليها وغير المعلقة)
 app.get('/', isAuthenticated, async (req, res) => {
     const searchQuery = req.query.search ? `%${req.query.search.trim()}%` : null;
 
@@ -279,7 +286,6 @@ app.get('/', isAuthenticated, async (req, res) => {
     res.render('index', { user: req.session.user, posts, search: req.query.search || '' });
 });
 
-// إضافة منشور
 app.post('/posts', isAuthenticated, upload.single('attachment'), async (req, res) => {
     const { content } = req.body;
     let filePath = null;
@@ -308,7 +314,6 @@ app.post('/posts', isAuthenticated, upload.single('attachment'), async (req, res
     res.redirect(req.session.user.role === 'admin' ? '/admin' : '/');
 });
 
-// إضافة تعليق
 app.post('/posts/:id/comments', isAuthenticated, async (req, res) => {
     const { content } = req.body;
     if (content.trim()) {
@@ -321,7 +326,6 @@ app.post('/posts/:id/comments', isAuthenticated, async (req, res) => {
     res.redirect('/');
 });
 
-// API الإبلاغ (على منشور أو تعليق)
 app.post('/report', isAuthenticated, async (req, res) => {
     const { target_type, target_id, reason } = req.body;
     
@@ -329,13 +333,11 @@ app.post('/report', isAuthenticated, async (req, res) => {
         return res.status(400).json({ error: 'يرجى توضيح سبب الإبلاغ.' });
     }
 
-    // تسجيل البلاغ
     await db.run(
         'INSERT INTO reports (reporter_id, target_type, target_id, reason) VALUES (?, ?, ?, ?)',
         [req.session.user.id, target_type, target_id, reason.trim()]
     );
 
-    // إخفاء العنصر فوراً للمراجعة
     if (target_type === 'post') {
         await db.run("UPDATE posts SET media_status = 'flagged' WHERE id = ?", [target_id]);
     } else if (target_type === 'comment') {
@@ -345,8 +347,6 @@ app.post('/report', isAuthenticated, async (req, res) => {
     res.json({ success: true, message: 'تم إرسال البلاغ وإخفاء المحتوى لحين مراجعة الإدارة.' });
 });
 
-// --- لوحة التحكم ---
-
 app.get('/admin', isAdmin, async (req, res) => {
     const pendingPosts = await db.all(`
         SELECT posts.*, users.display_name, users.national_id 
@@ -355,7 +355,6 @@ app.get('/admin', isAdmin, async (req, res) => {
         WHERE posts.media_status = 'pending'
     `);
 
-    // جلب كافة البلاغات مع تفاصيل المُبَلِّغ والمحتوى
     const reports = await db.all(`
         SELECT reports.*, 
                reporter.display_name as reporter_name, reporter.national_id as reporter_nid,
@@ -376,10 +375,9 @@ app.get('/admin', isAdmin, async (req, res) => {
 
     const studentsCount = await db.get('SELECT COUNT(*) as count FROM allowed_students');
 
-    res.render('admin', { user: req.session.user, pendingPosts, reports, allPosts, studentsCount: studentsCount.count });
+    res.render('admin', { user: req.session.user, pendingPosts, reports, allPosts, studentsCount: studentsCount ? studentsCount.count : 0 });
 });
 
-// التعامل مع البلاغات من لوحة التحكم
 app.post('/admin/reports/:id/dismiss', isAdmin, async (req, res) => {
     const report = await db.get('SELECT * FROM reports WHERE id = ?', [req.params.id]);
     if (report) {
@@ -393,7 +391,6 @@ app.post('/admin/reports/:id/dismiss', isAdmin, async (req, res) => {
     res.redirect('/admin');
 });
 
-// حظر كاتب المحتوى وحذف المنشور/التعليق
 app.post('/admin/reports/:id/ban-user', isAdmin, async (req, res) => {
     const report = await db.get('SELECT * FROM reports WHERE id = ?', [req.params.id]);
     if (report) {
@@ -461,4 +458,6 @@ app.get('/logout', (req, res) => {
 
 initDB().then(() => {
     app.listen(PORT, () => console.log(`🚀 السيرفر يعمل بكفاءة على المنفذ: ${PORT}`));
+}).catch(err => {
+    console.error('Database Initialization Failed:', err);
 });
