@@ -187,6 +187,12 @@
         }
 
         /* Create Post Area */
+        .create-post-form {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
         textarea {
             width: 100%;
             border: 1px solid var(--border);
@@ -204,7 +210,6 @@
         }
 
         .file-upload {
-            margin: 0.85rem 0;
             font-size: 0.85rem;
             color: var(--text-muted);
             display: flex;
@@ -214,6 +219,7 @@
             padding: 0.6rem 0.9rem;
             border-radius: var(--radius-md);
             border: 1px dashed var(--border);
+            flex-wrap: wrap;
         }
 
         .btn-post {
@@ -224,7 +230,7 @@
             border-radius: var(--radius-md);
             font-weight: 700;
             cursor: pointer;
-            float: left;
+            align-self: flex-start;
             transition: background 0.2s;
         }
 
@@ -332,6 +338,7 @@
             font-size: 0.875rem;
             border: 1px solid #fecaca;
             transition: background 0.2s;
+            margin-top: 0.5rem;
         }
 
         .pdf-box:hover {
@@ -363,6 +370,7 @@
         .comment-content {
             flex: 1;
             padding-left: 8px;
+            word-break: break-word;
         }
 
         .comment-form {
@@ -488,12 +496,12 @@
             <% } %>
         </form>
 
-        <!-- إنشـاء منشور جديد -->
+        <!-- إنشاء منشور جديد -->
         <div class="card">
-            <form action="/posts" method="POST" enctype="multipart/form-data" style="overflow: hidden;">
+            <form action="/posts" method="POST" enctype="multipart/form-data" class="create-post-form">
                 <textarea name="content" placeholder="طرح سؤال، استفسار، أو موضوع جديد للطلاب..."></textarea>
                 <div class="file-upload">
-                    📎 إرفاق ملف PDF أو صورة: 
+                    <span>📎 إرفاق ملف PDF أو صورة:</span> 
                     <input type="file" name="attachment" accept="image/*,application/pdf">
                 </div>
                 <button type="submit" class="btn-post">نشر الموضوع</button>
