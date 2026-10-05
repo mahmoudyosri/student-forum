@@ -11,7 +11,9 @@ const bcrypt = require('bcryptjs');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-const DATA_DIR = __dirname;
+// تحديد مسار التخزين الدائم على Render أو المجلد المحلي أثناء التطوير
+const DATA_DIR = process.env.RENDER ? '/opt/render/project/src/data' : __dirname;
+
 const uploadDir = path.join(DATA_DIR, 'uploads');
 if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
@@ -130,7 +132,7 @@ async function initDB() {
         );
     `);
 
-    // تهيئة الأدمن بالرقم القومي الجديد (29000000000000)
+    // تهيئة الأدمن بالرقم القومي (29000000000000)
     const ADMIN_NID = "29000000000000";
     let adminUser = await db.get('SELECT * FROM users WHERE role = "admin" OR national_id = ?', [ADMIN_NID]);
     const hashedAdminPass = await bcrypt.hash('admin2026Pass', 10);
@@ -138,10 +140,10 @@ async function initDB() {
     if (!adminUser) {
         await db.run('INSERT INTO users (national_id, display_name, password, role) VALUES (?, ?, ?, ?)', [ADMIN_NID, 'إدارة المعهد', hashedAdminPass, 'admin']);
     } else {
-        await db.run('UPDATE users SET national_id = ?, password = ? WHERE role = "admin"', [ADMIN_NID, hashedAdminPass]);
+        await db.run('UPDATE users SET password = ? WHERE role = "admin"', [hashedAdminPass]);
     }
 
-    console.log(`⚡ تم تهيئة قاعدة البيانات وحساب الأدمن بنجاح.`);
+    console.log(`⚡ تم تهيئة قاعدة البيانات في (${DATA_DIR}) بنجاح.`);
 }
 
 function isAuthenticated(req, res, next) {
@@ -162,7 +164,7 @@ function isAdmin(req, res, next) {
 
 function deleteFileIfExists(filePath) {
     if (!filePath) return;
-    const fullPath = path.join(__dirname, filePath);
+    const fullPath = path.join(DATA_DIR, filePath.replace('/uploads', 'uploads'));
     if (fs.existsSync(fullPath)) {
         try { fs.unlinkSync(fullPath); } catch (e) { console.error('خطأ حذف الملف:', e); }
     }
@@ -185,7 +187,6 @@ app.post('/login', async (req, res) => {
             return res.render('login', { error: `تم حظر هذا الحساب. سبب الحظر: (${user.ban_reason || 'مخالفة الشروط'})`, needPasswordSetup: false, national_id: null });
         }
 
-        // تسجيل دخول الأدمن
         if (cleanId === '29000000000000') {
             if (!password) return res.render('login', { error: 'يرجى كتابة كلمة مرور الأدمن.', needPasswordSetup: false, national_id: cleanId });
             
