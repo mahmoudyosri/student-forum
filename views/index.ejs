@@ -336,6 +336,43 @@
             font-weight: 600;
         }
 
+        /* Like & Action Buttons */
+        .post-actions-bar {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-top: 1rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid #f1f5f9;
+        }
+
+        .btn-like {
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            font-size: 0.88rem;
+            font-weight: 700;
+            padding: 0.4rem 0.9rem;
+            border-radius: 20px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: var(--transition);
+        }
+
+        .btn-like:hover {
+            background: #f1f5f9;
+            color: #e11d48;
+            border-color: #fecdd3;
+        }
+
+        .btn-like.liked {
+            background: #fff1f2;
+            color: #e11d48;
+            border-color: #fecdd3;
+        }
+
         /* Report Button */
         .btn-report {
             background: #f8fafc;
@@ -426,6 +463,13 @@
             word-break: break-word;
             line-height: 1.6;
             color: #334155;
+        }
+
+        .comment-footer {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-top: 4px;
         }
 
         .comment-form {
@@ -581,9 +625,9 @@
             <% } %>
         </form>
 
-        <!-- إنشاء منشور جديد -->
+        <!-- إنشاء منشور جديد (AJAX) -->
         <div class="card">
-            <form action="/posts" method="POST" enctype="multipart/form-data" class="create-post-form">
+            <form id="createPostForm" action="/posts" method="POST" enctype="multipart/form-data" class="create-post-form">
                 <textarea name="content" placeholder="طرح سؤال، استفسار، أو موضوع جديد للطلاب..."></textarea>
                 <div class="file-upload">
                     <span>📎 إرفاق ملف PDF أو صورة:</span> 
@@ -594,69 +638,83 @@
         </div>
 
         <!-- تغذية المنشورات -->
-        <% if(posts.length === 0) { %>
-            <div class="card" style="text-align: center; color: var(--text-muted); padding: 2.5rem; font-weight: 600;">
-                لا توجد منشورات متاحة حالياً.
-            </div>
-        <% } %>
-
-        <% posts.forEach(post => { %>
-            <div class="card <%= post.is_pinned ? 'pinned-card' : '' %>">
-                <div class="post-meta">
-                    <div class="author-box">
-                        <span class="author"><%= post.display_name %></span>
-                        <% if(post.role === 'admin') { %><span class="role-tag">إدارة المعهد</span><% } %>
-                        <% if(post.is_pinned) { %><span class="pin-badge">📌 مثبت</span><% } %>
-                    </div>
-                    <div class="meta-left">
-                        <span class="date">
-                            <%= new Date(post.created_at).toLocaleString('ar-EG', { timeZone: 'Africa/Cairo', dateStyle: 'short', timeStyle: 'short' }) %>
-                        </span>
-                        <!-- زر الإبلاغ عن منشور -->
-                        <button class="btn-report" onclick="openReportModal('post', <%= post.id %>)" title="إبلاغ عن المحتوى">🚨 إبلاغ</button>
-                    </div>
+        <div id="postsContainer">
+            <% if(posts.length === 0) { %>
+                <div id="noPostsMsg" class="card" style="text-align: center; color: var(--text-muted); padding: 2.5rem; font-weight: 600;">
+                    لا توجد منشورات متاحة حالياً.
                 </div>
+            <% } %>
 
-                <% if(post.content) { %>
-                    <div class="post-body"><%= post.content %></div>
-                <% } %>
-
-                <% if(post.file_path) { %>
-                    <div class="media-preview">
-                        <% if(post.media_status === 'pending') { %>
-                            <div style="background: #fffbeb; color: #b45309; padding: 0.85rem; border-radius: 10px; font-size: 0.88rem; border: 1px dashed #fcd34d; font-weight: 600;">
-                                ⏳ الصورة قيد مراجعة الإدارة وسوف تظهر للجميع فور اعتمادها.
-                            </div>
-                        <% } else if(post.file_type === 'image') { %>
-                            <img src="<%= post.file_path %>" alt="صورة مرفقة" loading="lazy">
-                        <% } else if(post.file_type === 'pdf') { %>
-                            <a href="<%= post.file_path %>" target="_blank" class="pdf-box">📄 فتح ملف PDF المرفق</a>
-                        <% } %>
-                    </div>
-                <% } %>
-
-                <!-- التعليقات -->
-                <div class="comments">
-                    <% post.comments.forEach(comment => { %>
-                        <div class="comment-item">
-                            <div class="comment-content">
-                                <b><%= comment.display_name %>:</b> <%= comment.content %>
-                                <span style="font-size: 0.72rem; color: #94a3b8; margin-right: 6px; font-weight: 600;">
-                                    (<%= new Date(comment.created_at).toLocaleString('ar-EG', { timeZone: 'Africa/Cairo', timeStyle: 'short' }) %>)
-                                </span>
-                            </div>
-                            <!-- زر الإبلاغ عن تعليق -->
-                            <button class="btn-report" onclick="openReportModal('comment', <%= comment.id %>)" title="إبلاغ عن التعليق">🚨 إبلاغ</button>
+            <% posts.forEach(post => { %>
+                <div class="card <%= post.is_pinned ? 'pinned-card' : '' %>" data-post-id="<%= post.id %>">
+                    <div class="post-meta">
+                        <div class="author-box">
+                            <span class="author"><%= post.display_name %></span>
+                            <% if(post.role === 'admin') { %><span class="role-tag">إدارة المعهد</span><% } %>
+                            <% if(post.is_pinned) { %><span class="pin-badge">📌 مثبت</span><% } %>
                         </div>
-                    <% }) %>
+                        <div class="meta-left">
+                            <span class="date">
+                                <%= new Date(post.created_at).toLocaleString('ar-EG', { timeZone: 'Africa/Cairo', dateStyle: 'short', timeStyle: 'short' }) %>
+                            </span>
+                            <button class="btn-report" onclick="openReportModal('post', <%= post.id %>)" title="إبلاغ عن المحتوى">🚨 إبلاغ</button>
+                        </div>
+                    </div>
 
-                    <form action="/posts/<%= post.id %>/comments" method="POST" class="comment-form">
-                        <input type="text" name="content" placeholder="اكتب تعليقاً..." required>
-                        <button type="submit">تعليق</button>
-                    </form>
+                    <% if(post.content) { %>
+                        <div class="post-body"><%= post.content %></div>
+                    <% } %>
+
+                    <% if(post.file_path) { %>
+                        <div class="media-preview">
+                            <% if(post.media_status === 'pending') { %>
+                                <div style="background: #fffbeb; color: #b45309; padding: 0.85rem; border-radius: 10px; font-size: 0.88rem; border: 1px dashed #fcd34d; font-weight: 600;">
+                                    ⏳ الصورة قيد مراجعة الإدارة وسوف تظهر للجميع فور اعتمادها.
+                                </div>
+                            <% } else if(post.file_type === 'image') { %>
+                                <img src="<%= post.file_path %>" alt="صورة مرفقة" loading="lazy">
+                            <% } else if(post.file_type === 'pdf') { %>
+                                <a href="<%= post.file_path %>" target="_blank" class="pdf-box">📄 فتح ملف PDF المرفق</a>
+                            <% } %>
+                        </div>
+                    <% } %>
+
+                    <!-- أزرار التفاعل والإعجاب للبوست -->
+                    <div class="post-actions-bar">
+                        <button class="btn-like <%= post.is_liked ? 'liked' : '' %>" onclick="toggleLike('post', <%= post.id %>, this)">
+                            ❤️ <span class="like-count"><%= post.likes_count %></span> إعجاب
+                        </button>
+                    </div>
+
+                    <!-- التعليقات -->
+                    <div class="comments">
+                        <div class="comments-list">
+                            <% post.comments.forEach(comment => { %>
+                                <div class="comment-item" data-comment-id="<%= comment.id %>">
+                                    <div class="comment-content">
+                                        <b><%= comment.display_name %>:</b> <%= comment.content %>
+                                        <div class="comment-footer">
+                                            <span style="font-size: 0.72rem; color: #94a3b8; font-weight: 600;">
+                                                (<%= new Date(comment.created_at).toLocaleString('ar-EG', { timeZone: 'Africa/Cairo', timeStyle: 'short' }) %>)
+                                            </span>
+                                            <button class="btn-like <%= comment.is_liked ? 'liked' : '' %>" style="font-size:0.75rem; padding:2px 6px;" onclick="toggleLike('comment', <%= comment.id %>, this)">
+                                                ❤️ <span class="like-count"><%= comment.likes_count %></span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <button class="btn-report" onclick="openReportModal('comment', <%= comment.id %>)" title="إبلاغ عن التعليق">🚨 إبلاغ</button>
+                                </div>
+                            <% }) %>
+                        </div>
+
+                        <form class="comment-form" onsubmit="submitComment(event, <%= post.id %>)">
+                            <input type="text" name="content" placeholder="اكتب تعليقاً..." required>
+                            <button type="submit">تعليق</button>
+                        </form>
+                    </div>
                 </div>
-            </div>
-        <% }) %>
+            <% }) %>
+        </div>
     </div>
 
     <!-- نافذة الإبلاغ (Modal) -->
@@ -720,6 +778,135 @@
             } catch (err) {
                 console.error('Report submission error:', err);
                 alert('تعذر الاتصال بالسيرفر.');
+            }
+        }
+
+        // --- نظام الإعجابات الفوري (AJAX Likes) ---
+        async function toggleLike(targetType, targetId, btnElement) {
+            try {
+                const response = await fetch('/like', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ target_type: targetType, target_id: targetId })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    const countSpan = btnElement.querySelector('.like-count');
+                    countSpan.textContent = data.likesCount;
+                    if (data.liked) {
+                        btnElement.classList.add('liked');
+                    } else {
+                        btnElement.classList.remove('liked');
+                    }
+                }
+            } catch (err) {
+                console.error('Like error:', err);
+            }
+        }
+
+        // --- نشر المنشورات بدون ريفرش (AJAX Posts) ---
+        document.getElementById('createPostForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+
+            try {
+                const response = await fetch('/posts', {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 'Accept': 'application/json' }
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    this.reset();
+                    const noMsg = document.getElementById('noPostsMsg');
+                    if (noMsg) noMsg.remove();
+
+                    const post = data.post;
+                    let mediaHtml = '';
+                    if (post.file_path) {
+                        if (post.media_status === 'pending') {
+                            mediaHtml = `<div style="background: #fffbeb; color: #b45309; padding: 0.85rem; border-radius: 10px; font-size: 0.88rem; border: 1px dashed #fcd34d; font-weight: 600;">⏳ الصورة قيد مراجعة الإدارة وسوف تظهر للجميع فور اعتمادها.</div>`;
+                        } else if (post.file_type === 'image') {
+                            mediaHtml = `<img src="${post.file_path}" alt="صورة مرفقة" loading="lazy">`;
+                        } else if (post.file_type === 'pdf') {
+                            mediaHtml = `<a href="${post.file_path}" target="_blank" class="pdf-box">📄 فتح ملف PDF المرفق</a>`;
+                        }
+                    }
+
+                    const newPostHTML = `
+                        <div class="card" data-post-id="${post.id}">
+                            <div class="post-meta">
+                                <div class="author-box">
+                                    <span class="author">${post.display_name}</span>
+                                    ${post.role === 'admin' ? '<span class="role-tag">إدارة المعهد</span>' : ''}
+                                </div>
+                                <div class="meta-left">
+                                    <span class="date">الآن</span>
+                                    <button class="btn-report" onclick="openReportModal('post', ${post.id})">🚨 إبلاغ</button>
+                                </div>
+                            </div>
+                            ${post.content ? `<div class="post-body">${post.content}</div>` : ''}
+                            <div class="media-preview">${mediaHtml}</div>
+                            <div class="post-actions-bar">
+                                <button class="btn-like" onclick="toggleLike('post', ${post.id}, this)">
+                                    ❤️ <span class="like-count">0</span> إعجاب
+                                </button>
+                            </div>
+                            <div class="comments">
+                                <div class="comments-list"></div>
+                                <form class="comment-form" onsubmit="submitComment(event, ${post.id})">
+                                    <input type="text" name="content" placeholder="اكتب تعليقاً..." required>
+                                    <button type="submit">تعليق</button>
+                                </form>
+                            </div>
+                        </div>
+                    `;
+                    document.getElementById('postsContainer').insertAdjacentHTML('afterbegin', newPostHTML);
+                }
+            } catch (err) {
+                console.error('Post creation error:', err);
+            }
+        });
+
+        // --- إضافة التعليقات بدون ريفرش (AJAX Comments) ---
+        async function submitComment(event, postId) {
+            event.preventDefault();
+            const form = event.target;
+            const input = form.querySelector('input[name="content"]');
+            const content = input.value.trim();
+            if (!content) return;
+
+            try {
+                const response = await fetch(`/posts/${postId}/comments`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                    body: JSON.stringify({ content })
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    input.value = '';
+                    const comment = data.comment;
+                    const commentHTML = `
+                        <div class="comment-item" data-comment-id="${comment.id}">
+                            <div class="comment-content">
+                                <b>${comment.display_name}:</b> ${comment.content}
+                                <div class="comment-footer">
+                                    <span style="font-size: 0.72rem; color: #94a3b8; font-weight: 600;">(الآن)</span>
+                                    <button class="btn-like" style="font-size:0.75rem; padding:2px 6px;" onclick="toggleLike('comment', ${comment.id}, this)">
+                                        ❤️ <span class="like-count">0</span>
+                                    </button>
+                                </div>
+                            </div>
+                            <button class="btn-report" onclick="openReportModal('comment', ${comment.id})">🚨 إبلاغ</button>
+                        </div>
+                    `;
+                    const postCard = form.closest('.card');
+                    postCard.querySelector('.comments-list').insertAdjacentHTML('beforeend', commentHTML);
+                }
+            } catch (err) {
+                console.error('Comment error:', err);
             }
         }
     </script>
