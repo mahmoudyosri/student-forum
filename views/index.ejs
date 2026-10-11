@@ -479,6 +479,48 @@
             font-weight: 700;
             cursor: pointer;
         }
+
+        /* حاوية الإشعارات Toast Notifications */
+        #toastContainer {
+            position: fixed;
+            bottom: 25px;
+            left: 25px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            pointer-events: none;
+        }
+
+        .toast {
+            pointer-events: auto;
+            min-width: 280px;
+            padding: 12px 20px;
+            border-radius: 12px;
+            background: #0f172a;
+            color: white;
+            font-size: 0.9rem;
+            font-weight: 700;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1), fadeOut 0.3s ease 2.7s forwards;
+        }
+
+        .toast.success { background: #10b981; }
+        .toast.error { background: #ef4444; }
+        .toast.info { background: #2563eb; }
+
+        @keyframes slideIn {
+            from { transform: translateY(100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
     </style>
 </head>
 <body>
@@ -594,6 +636,7 @@
         </div>
     </div>
 
+    <!-- نافذة الإبلاغ (Modal) -->
     <div id="reportModal" class="modal-overlay">
         <div class="modal-box">
             <h3>🚨 إبلاغ عن محتوى غير لائق</h3>
@@ -608,7 +651,29 @@
         </div>
     </div>
 
+    <!-- حاوية الإشعارات اللحظية -->
+    <div id="toastContainer"></div>
+
     <script>
+        // دالة إظهار الإشعارات الأنيقة (Toast Notification)
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            
+            let icon = '🔔';
+            if(type === 'success') icon = '✅';
+            if(type === 'error') icon = '⚠️';
+            if(type === 'info') icon = 'ℹ️';
+
+            toast.innerHTML = `<span>${icon}</span> <span>${message}</span>`;
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
+        }
+
         let currentTargetType = null;
         let currentTargetId = null;
 
@@ -628,17 +693,14 @@
         async function submitReport() {
             const reason = document.getElementById('reportReason').value.trim();
             if (!reason) {
-                alert('يرجى كتابة سبب الإبلاغ.');
+                showToast('يرجى كتابة سبب الإبلاغ.', 'error');
                 return;
             }
 
             try {
                 const response = await fetch('/report', {
                     method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         target_type: currentTargetType,
                         target_id: currentTargetId,
@@ -648,27 +710,24 @@
 
                 const data = await response.json();
                 if (data.success) {
-                    alert(data.message || 'تم إرسال البلاغ بنجاح.');
+                    showToast(data.message || 'تم إرسال البلاغ بنجاح.', 'info');
                     closeReportModal();
-                    window.location.reload();
+                    setTimeout(() => window.location.reload(), 1200);
                 } else {
-                    alert(data.error || 'حدث خطأ أثناء إرسال البلاغ.');
+                    showToast(data.error || 'حدث خطأ أثناء إرسال البلاغ.', 'error');
                 }
             } catch (err) {
                 console.error('Report submission error:', err);
-                alert('تعذر الاتصال بالسيرفر.');
+                showToast('تعذر الاتصال بالسيرفر.', 'error');
             }
         }
 
-        // نظام الإعجابات الفوري (AJAX Likes)
+        // 1. الإعجابات بدون ريفرش
         async function toggleLike(targetType, targetId, btnElement) {
             try {
                 const response = await fetch('/like', {
                     method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ target_type: targetType, target_id: targetId })
                 });
                 const data = await response.json();
@@ -680,13 +739,17 @@
                     } else {
                         btnElement.classList.remove('liked');
                     }
+                    showToast(data.message, 'info');
+                } else {
+                    showToast(data.error || 'خطأ في العملية', 'error');
                 }
             } catch (err) {
                 console.error('Like error:', err);
+                showToast('حدث خطأ في الاتصال بالسيرفر.', 'error');
             }
         }
 
-        // نشر المنشورات بدون ريفرش (AJAX Posts)
+        // 2. نشر منشور جديد بدون ريفرش
         document.getElementById('createPostForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             const formData = new FormData(this);
@@ -694,16 +757,14 @@
             try {
                 const response = await fetch('/posts', {
                     method: 'POST',
-                    body: formData,
-                    headers: { 
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
+                    body: formData
                 });
                 const data = await response.json();
 
                 if (data.success) {
                     this.reset();
+                    showToast(data.message, 'success');
+
                     const noMsg = document.getElementById('noPostsMsg');
                     if (noMsg) noMsg.remove();
 
@@ -748,13 +809,16 @@
                         </div>
                     `;
                     document.getElementById('postsContainer').insertAdjacentHTML('afterbegin', newPostHTML);
+                } else {
+                    showToast(data.error || 'عذراً، فشل نشر الموضوع.', 'error');
                 }
             } catch (err) {
                 console.error('Post creation error:', err);
+                showToast('حدث خطأ غير متوقع أثناء نشر الموضوع.', 'error');
             }
         });
 
-        // إضافة التعليقات بدون ريفرش (AJAX Comments)
+        // 3. إضافة التعليقات بدون ريفرش
         async function submitComment(event, postId) {
             event.preventDefault();
             const form = event.target;
@@ -765,17 +829,15 @@
             try {
                 const response = await fetch(`/posts/${postId}/comments`, {
                     method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json', 
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ content })
                 });
                 const data = await response.json();
 
                 if (data.success) {
                     input.value = '';
+                    showToast(data.message, 'success');
+
                     const comment = data.comment;
                     const commentHTML = `
                         <div class="comment-item" data-comment-id="${comment.id}">
@@ -793,9 +855,12 @@
                     `;
                     const postCard = form.closest('.card');
                     postCard.querySelector('.comments-list').insertAdjacentHTML('beforeend', commentHTML);
+                } else {
+                    showToast(data.error || 'عذراً، تعذر إضافة التعليق.', 'error');
                 }
             } catch (err) {
                 console.error('Comment error:', err);
+                showToast('حدث خطأ في السيرفر أثناء إضافة التعليق.', 'error');
             }
         }
     </script>
