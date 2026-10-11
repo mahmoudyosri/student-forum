@@ -130,7 +130,6 @@ async function initDB() {
         );
     `);
 
-    // تهيئة حساب الأدمن
     const ADMIN_NID = "29000000000000";
     const adminCheck = await pool.query('SELECT * FROM users WHERE role = $1 OR national_id = $2', ['admin', ADMIN_NID]);
     const hashedAdminPass = await bcrypt.hash('admin2026Pass', 10);
@@ -141,7 +140,7 @@ async function initDB() {
         await pool.query('UPDATE users SET national_id = $1, password = $2 WHERE role = $3', [ADMIN_NID, hashedAdminPass, 'admin']);
     }
 
-    console.log(`⚡ تم تهيئة قاعدة بيانات PostgreSQL والجداول بنجاح.`);
+    console.log(`⚡ تم تهيئة قاعدة البيانات بنجاح.`);
 }
 
 function isAuthenticated(req, res, next) {
@@ -327,7 +326,59 @@ app.get('/', isAuthenticated, async (req, res) => {
     }
 });
 
-// إنشاء منشور جديد (استجابة JSON المباشرة للـ AJAX)
+// API الفحص الفوري لجلب المنشورات والتعليقات واللايكات للجميع تلقائياً
+app.get('/api/live-sync', isAuthenticated, async (req, res) => {
+    try {
+        const lastPostId = parseInt(req.query.lastPostId) || 0;
+        const currentUserId = req.session.user.id;
+
+        // المنشورات الجديدة التي نُشرت بعد آخر منشور في صفحة المستخدم
+        const newPostsRes = await pool.query(`
+            SELECT posts.*, users.display_name, users.role 
+            FROM posts 
+            JOIN users ON posts.user_id = users.id 
+            WHERE posts.id > $1 AND (posts.media_status = 'approved' OR posts.user_id = $2)
+            ORDER BY posts.id ASC
+        `, [lastPostId, currentUserId]);
+
+        const newPosts = newPostsRes.rows;
+
+        for (let post of newPosts) {
+            const commentsRes = await pool.query(`
+                SELECT comments.*, users.display_name 
+                FROM comments 
+                JOIN users ON comments.user_id = users.id 
+                WHERE comments.post_id = $1 AND (comments.is_hidden IS NULL OR comments.is_hidden = 0)
+                ORDER BY comments.created_at ASC
+            `, [post.id]);
+            post.comments = commentsRes.rows;
+
+            const postLikesCount = await pool.query('SELECT COUNT(*) FROM likes WHERE target_type = $1 AND target_id = $2', ['post', post.id]);
+            const postUserLiked = await pool.query('SELECT id FROM likes WHERE target_type = $1 AND target_id = $2 AND user_id = $3', ['post', post.id, currentUserId]);
+            
+            post.likes_count = parseInt(postLikesCount.rows[0].count);
+            post.is_liked = postUserLiked.rows.length > 0;
+        }
+
+        // جلب أحدث أرقام الإعجابات لجميع البوستات النشطة
+        const allLikesRes = await pool.query(`
+            SELECT target_type, target_id, COUNT(*) as count 
+            FROM likes 
+            GROUP BY target_type, target_id
+        `);
+
+        res.json({
+            success: true,
+            newPosts: newPosts,
+            likesData: allLikesRes.rows
+        });
+    } catch (err) {
+        console.error('Live Sync Error:', err);
+        res.status(500).json({ success: false });
+    }
+});
+
+// إنشاء منشور جديد
 app.post('/posts', isAuthenticated, upload.single('attachment'), async (req, res) => {
     try {
         const { content } = req.body;
@@ -356,7 +407,7 @@ app.post('/posts', isAuthenticated, upload.single('attachment'), async (req, res
             
             return res.json({
                 success: true,
-                message: mediaStatus === 'pending' ? 'تم نشر المنشور وسوف تظهر الصورة فور مراجعتها من الإدارة.' : 'تم نشر الموضوع بنجاح!',
+                message: mediaStatus === 'pending' ? 'تم نشر المنشور وسوف تظهر الصورة فور مراجعتها.' : 'تم نشر الموضوع بنجاح!',
                 post: {
                     id: post.id,
                     content: post.content,
@@ -372,14 +423,14 @@ app.post('/posts', isAuthenticated, upload.single('attachment'), async (req, res
                 }
             });
         }
-        res.status(400).json({ success: false, error: 'يرجى كتابة نص أو إرفاق ملف للتمكن من النشر.' });
+        res.status(400).json({ success: false, error: 'يرجى كتابة نص أو إرفاق ملف.' });
     } catch (err) {
         console.error('Create Post Error:', err);
-        res.status(500).json({ success: false, error: 'حدث خطأ أثناء نشر الموضوع.' });
+        res.status(500).json({ success: false, error: 'حدث خطأ أثناء النشر.' });
     }
 });
 
-// إضافة تعليق جديد (استجابة JSON للـ AJAX)
+// إضافة تعليق
 app.post('/posts/:id/comments', isAuthenticated, async (req, res) => {
     try {
         const { content } = req.body;
@@ -412,14 +463,14 @@ app.post('/posts/:id/comments', isAuthenticated, async (req, res) => {
     }
 });
 
-// تسجيل/إلغاء الإعجاب (Likes API)
+// الإعجابات
 app.post('/like', isAuthenticated, async (req, res) => {
     try {
         const { target_type, target_id } = req.body;
         const userId = req.session.user.id;
 
         if (!['post', 'comment'].includes(target_type) || !target_id) {
-            return res.status(400).json({ success: false, error: 'بيانات التفاعل غير صحيحة.' });
+            return res.status(400).json({ success: false, error: 'بيانات غير صالحة.' });
         }
 
         const existingLike = await pool.query(
@@ -447,22 +498,16 @@ app.post('/like', isAuthenticated, async (req, res) => {
         });
     } catch (err) {
         console.error('Like Error:', err);
-        return res.status(500).json({ success: false, error: 'حدث خطأ أثناء تسجيل تفاعلك.' });
+        return res.status(500).json({ success: false, error: 'حدث خطأ في الإعجاب.' });
     }
 });
 
 app.post('/report', isAuthenticated, async (req, res) => {
     try {
         const { target_type, target_id, reason } = req.body;
-        
-        if (!reason || !reason.trim()) {
-            return res.status(400).json({ error: 'يرجى توضيح سبب الإبلاغ.' });
-        }
+        if (!reason || !reason.trim()) return res.status(400).json({ error: 'يرجى توضيح السبب.' });
 
-        await pool.query(
-            'INSERT INTO reports (reporter_id, target_type, target_id, reason) VALUES ($1, $2, $3, $4)',
-            [req.session.user.id, target_type, target_id, reason.trim()]
-        );
+        await pool.query('INSERT INTO reports (reporter_id, target_type, target_id, reason) VALUES ($1, $2, $3, $4)', [req.session.user.id, target_type, target_id, reason.trim()]);
 
         if (target_type === 'post') {
             await pool.query("UPDATE posts SET media_status = 'flagged' WHERE id = $1", [target_id]);
@@ -470,10 +515,9 @@ app.post('/report', isAuthenticated, async (req, res) => {
             await pool.query("UPDATE comments SET is_hidden = 1 WHERE id = $1", [target_id]);
         }
 
-        res.json({ success: true, message: 'تم إرسال البلاغ وإخفاء المحتوى لحين مراجعة الإدارة.' });
+        res.json({ success: true, message: 'تم إرسال البلاغ بنجاح.' });
     } catch (err) {
-        console.error('Report Error:', err);
-        res.status(500).json({ error: 'حدث خطأ أثناء معالجة البلاغ.' });
+        res.status(500).json({ error: 'خطأ في معالجة البلاغ.' });
     }
 });
 
@@ -481,37 +525,13 @@ app.post('/report', isAuthenticated, async (req, res) => {
 
 app.get('/admin', isAdmin, async (req, res) => {
     try {
-        const pendingPosts = (await pool.query(`
-            SELECT posts.*, users.display_name, users.national_id 
-            FROM posts 
-            JOIN users ON posts.user_id = users.id 
-            WHERE posts.media_status = 'pending'
-        `)).rows;
-
-        const reports = (await pool.query(`
-            SELECT reports.*, 
-                   reporter.id as reporter_user_id, reporter.display_name as reporter_name, reporter.national_id as reporter_nid,
-                   posts.content as post_content, comments.content as comment_content
-            FROM reports
-            JOIN users reporter ON reports.reporter_id = reporter.id
-            LEFT JOIN posts ON reports.target_type = 'post' AND reports.target_id = posts.id
-            LEFT JOIN comments ON reports.target_type = 'comment' AND reports.target_id = comments.id
-            ORDER BY reports.created_at DESC
-        `)).rows;
-
-        const allPosts = (await pool.query(`
-            SELECT posts.*, users.display_name, users.national_id 
-            FROM posts 
-            JOIN users ON posts.user_id = users.id 
-            ORDER BY posts.is_pinned DESC, posts.created_at DESC
-        `)).rows;
-
-        const studentsCountRes = await pool.query('SELECT COUNT(*) as count FROM allowed_students');
-        const studentsCount = studentsCountRes.rows[0].count;
+        const pendingPosts = (await pool.query(`SELECT posts.*, users.display_name, users.national_id FROM posts JOIN users ON posts.user_id = users.id WHERE posts.media_status = 'pending'`)).rows;
+        const reports = (await pool.query(`SELECT reports.*, reporter.display_name as reporter_name, posts.content as post_content, comments.content as comment_content FROM reports JOIN users reporter ON reports.reporter_id = reporter.id LEFT JOIN posts ON reports.target_type = 'post' AND reports.target_id = posts.id LEFT JOIN comments ON reports.target_type = 'comment' AND reports.target_id = comments.id ORDER BY reports.created_at DESC`)).rows;
+        const allPosts = (await pool.query(`SELECT posts.*, users.display_name, users.national_id FROM posts JOIN users ON posts.user_id = users.id ORDER BY posts.is_pinned DESC, posts.created_at DESC`)).rows;
+        const studentsCount = (await pool.query('SELECT COUNT(*) as count FROM allowed_students')).rows[0].count;
 
         res.render('admin', { user: req.session.user, pendingPosts, reports, allPosts, studentsCount });
     } catch (err) {
-        console.error('Admin Route Error:', err);
         res.status(500).send('حدث خطأ في لوحة التحكم.');
     }
 });
@@ -519,11 +539,7 @@ app.get('/admin', isAdmin, async (req, res) => {
 app.get('/admin/students', isAdmin, async (req, res) => {
     try {
         const searchQuery = req.query.search ? `%${req.query.search.trim()}%` : null;
-        let sql = `
-            SELECT allowed_students.national_id, allowed_students.full_name, users.password, users.is_banned, users.ban_reason
-            FROM allowed_students
-            LEFT JOIN users ON allowed_students.national_id = users.national_id
-        `;
+        let sql = `SELECT allowed_students.national_id, allowed_students.full_name, users.password, users.is_banned, users.ban_reason FROM allowed_students LEFT JOIN users ON allowed_students.national_id = users.national_id`;
         let params = [];
         if (searchQuery) {
             sql += ` WHERE allowed_students.national_id LIKE $1 OR allowed_students.full_name LIKE $1`;
@@ -534,166 +550,84 @@ app.get('/admin/students', isAdmin, async (req, res) => {
 
         res.render('admin-students', { user: req.session.user, students, bannedUsers, search: req.query.search || '' });
     } catch (err) {
-        console.error('Admin Students Route Error:', err);
         res.status(500).send('حدث خطأ أثناء تحميل إدارة الحسابات.');
     }
 });
 
 app.post('/admin/reset-password/:national_id', isAdmin, async (req, res) => {
-    try {
-        const { national_id } = req.params;
-        await pool.query('UPDATE users SET password = NULL WHERE national_id = $1', [national_id]);
-        res.redirect('/admin/students');
-    } catch (err) {
-        res.redirect('/admin/students');
-    }
+    await pool.query('UPDATE users SET password = NULL WHERE national_id = $1', [req.params.national_id]);
+    res.redirect('/admin/students');
 });
 
 app.post('/admin/toggle-ban/:national_id', isAdmin, async (req, res) => {
-    try {
-        const { ban_reason } = req.body;
-        const userRes = await pool.query('SELECT is_banned FROM users WHERE national_id = $1', [req.params.national_id]);
-        const user = userRes.rows[0];
-        if (user) {
-            const newStatus = user.is_banned ? 0 : 1;
-            const reason = newStatus === 1 ? (ban_reason || 'حظر يدوي من الإدارة') : null;
-            await pool.query('UPDATE users SET is_banned = $1, ban_reason = $2 WHERE national_id = $3', [newStatus, reason, req.params.national_id]);
-        }
-        res.redirect('/admin/students');
-    } catch (err) {
-        res.redirect('/admin/students');
+    const userRes = await pool.query('SELECT is_banned FROM users WHERE national_id = $1', [req.params.national_id]);
+    if (userRes.rows[0]) {
+        const newStatus = userRes.rows[0].is_banned ? 0 : 1;
+        await pool.query('UPDATE users SET is_banned = $1, ban_reason = $2 WHERE national_id = $3', [newStatus, newStatus === 1 ? (req.body.ban_reason || 'حظر يدوي') : null, req.params.national_id]);
     }
+    res.redirect('/admin/students');
 });
 
 app.post('/admin/add-student', isAdmin, async (req, res) => {
-    try {
-        const { national_id, full_name } = req.body;
-        if (national_id && full_name) {
-            await pool.query('INSERT INTO allowed_students (national_id, full_name) VALUES ($1, $2) ON CONFLICT (national_id) DO NOTHING', [national_id.trim(), full_name.trim()]);
-        }
-        res.redirect('/admin');
-    } catch (err) {
-        res.redirect('/admin');
+    if (req.body.national_id && req.body.full_name) {
+        await pool.query('INSERT INTO allowed_students (national_id, full_name) VALUES ($1, $2) ON CONFLICT (national_id) DO NOTHING', [req.body.national_id.trim(), req.body.full_name.trim()]);
     }
+    res.redirect('/admin');
 });
 
 app.post('/admin/import-excel', isAdmin, upload.single('excelFile'), async (req, res) => {
     if (!req.file) return res.status(400).send('يرجى اختيار ملف الإكسيل.');
-
     try {
         const workbook = XLSX.readFile(req.file.path);
-        const sheetName = workbook.SheetNames[0];
-        const sheetData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
-
+        const sheetData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
         for (let row of sheetData) {
             const nationalId = row['national_id'] || row['الرقم القومي'] || row['الرقم_القومي'];
             const fullName = row['full_name'] || row['الاسم'] || row['اسم الطالب'];
-
             if (nationalId && fullName) {
                 await pool.query('INSERT INTO allowed_students (national_id, full_name) VALUES ($1, $2) ON CONFLICT (national_id) DO NOTHING', [String(nationalId).trim(), String(fullName).trim()]);
             }
         }
-
         fs.unlinkSync(req.file.path);
         res.redirect('/admin');
     } catch (err) {
-        console.error('Import Excel Error:', err);
         res.status(500).send('خطأ أثناء معالجة ملف الإكسيل.');
     }
 });
 
 app.post('/admin/approve-post/:id', isAdmin, async (req, res) => {
-    try {
-        await pool.query("UPDATE posts SET media_status = 'approved' WHERE id = $1", [req.params.id]);
-        res.redirect('/admin');
-    } catch (err) {
-        res.redirect('/admin');
-    }
+    await pool.query("UPDATE posts SET media_status = 'approved' WHERE id = $1", [req.params.id]);
+    res.redirect('/admin');
 });
 
 app.post('/admin/delete-post/:id', isAdmin, async (req, res) => {
-    try {
-        const postRes = await pool.query('SELECT file_path FROM posts WHERE id = $1', [req.params.id]);
-        if (postRes.rows[0]) deleteFileIfExists(postRes.rows[0].file_path);
-        
-        await pool.query("DELETE FROM posts WHERE id = $1", [req.params.id]);
-        res.redirect('/admin');
-    } catch (err) {
-        res.redirect('/admin');
-    }
+    const postRes = await pool.query('SELECT file_path FROM posts WHERE id = $1', [req.params.id]);
+    if (postRes.rows[0]) deleteFileIfExists(postRes.rows[0].file_path);
+    await pool.query("DELETE FROM posts WHERE id = $1", [req.params.id]);
+    res.redirect('/admin');
 });
 
 app.post('/admin/delete-comment/:id', isAdmin, async (req, res) => {
-    try {
-        await pool.query("DELETE FROM comments WHERE id = $1", [req.params.id]);
-        res.redirect('/admin');
-    } catch (err) {
-        res.redirect('/admin');
-    }
+    await pool.query("DELETE FROM comments WHERE id = $1", [req.params.id]);
+    res.redirect('/admin');
 });
 
 app.post('/admin/toggle-pin/:id', isAdmin, async (req, res) => {
-    try {
-        const postRes = await pool.query('SELECT is_pinned FROM posts WHERE id = $1', [req.params.id]);
-        if (postRes.rows[0]) {
-            await pool.query('UPDATE posts SET is_pinned = $1 WHERE id = $2', [postRes.rows[0].is_pinned ? 0 : 1, req.params.id]);
-        }
-        res.redirect('/admin');
-    } catch (err) {
-        res.redirect('/admin');
+    const postRes = await pool.query('SELECT is_pinned FROM posts WHERE id = $1', [req.params.id]);
+    if (postRes.rows[0]) {
+        await pool.query('UPDATE posts SET is_pinned = $1 WHERE id = $2', [postRes.rows[0].is_pinned ? 0 : 1, req.params.id]);
     }
+    res.redirect('/admin');
 });
 
 app.post('/admin/reports/:id/dismiss', isAdmin, async (req, res) => {
-    try {
-        const reportRes = await pool.query('SELECT * FROM reports WHERE id = $1', [req.params.id]);
+    const reportRes = await pool.query('SELECT * FROM reports WHERE id = $1', [req.params.id]);
+    if (reportRes.rows[0]) {
         const report = reportRes.rows[0];
-        if (report) {
-            if (report.target_type === 'post') {
-                await pool.query("UPDATE posts SET media_status = 'approved' WHERE id = $1", [report.target_id]);
-            } else if (report.target_type === 'comment') {
-                await pool.query("UPDATE comments SET is_hidden = 0 WHERE id = $1", [report.target_id]);
-            }
-            await pool.query('DELETE FROM reports WHERE id = $1', [req.params.id]);
-        }
-        res.redirect('/admin');
-    } catch (err) {
-        res.redirect('/admin');
+        if (report.target_type === 'post') await pool.query("UPDATE posts SET media_status = 'approved' WHERE id = $1", [report.target_id]);
+        if (report.target_type === 'comment') await pool.query("UPDATE comments SET is_hidden = 0 WHERE id = $1", [report.target_id]);
+        await pool.query('DELETE FROM reports WHERE id = $1', [req.params.id]);
     }
-});
-
-app.post('/admin/reports/:id/ban-user', isAdmin, async (req, res) => {
-    try {
-        const reportRes = await pool.query('SELECT * FROM reports WHERE id = $1', [req.params.id]);
-        const report = reportRes.rows[0];
-        if (report) {
-            let userIdToBan = null;
-            if (report.target_type === 'post') {
-                const postRes = await pool.query('SELECT * FROM posts WHERE id = $1', [report.target_id]);
-                const post = postRes.rows[0];
-                if (post) {
-                    userIdToBan = post.user_id;
-                    deleteFileIfExists(post.file_path);
-                    await pool.query('DELETE FROM posts WHERE id = $1', [post.id]);
-                }
-            } else if (report.target_type === 'comment') {
-                const commentRes = await pool.query('SELECT * FROM comments WHERE id = $1', [report.target_id]);
-                const comment = commentRes.rows[0];
-                if (comment) {
-                    userIdToBan = comment.user_id;
-                    await pool.query('DELETE FROM comments WHERE id = $1', [comment.id]);
-                }
-            }
-
-            if (userIdToBan) {
-                await pool.query('UPDATE users SET is_banned = 1, ban_reason = $1 WHERE id = $2', ['نشر محتوى مخالف بناءً على بلاغ معتمد', userIdToBan]);
-            }
-            await pool.query('DELETE FROM reports WHERE id = $1', [req.params.id]);
-        }
-        res.redirect('/admin');
-    } catch (err) {
-        res.redirect('/admin');
-    }
+    res.redirect('/admin');
 });
 
 app.get('/logout', (req, res) => {
@@ -703,6 +637,4 @@ app.get('/logout', (req, res) => {
 
 initDB().then(() => {
     app.listen(PORT, () => console.log(`🚀 السيرفر يعمل بكفاءة على المنفذ: ${PORT}`));
-}).catch(err => {
-    console.error('Database Initialization Failed:', err);
-});
+}).catch(err => console.error('DB Init Error:', err));
