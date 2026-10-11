@@ -326,13 +326,13 @@ app.get('/', isAuthenticated, async (req, res) => {
     }
 });
 
-// API الفحص الفوري لجلب المنشورات والتعليقات واللايكات للجميع تلقائياً
+// API المزامنة اللحظية الشاملة (للإشعارات، المنشورات، التثبيت، والتعليقات واللايكات)
 app.get('/api/live-sync', isAuthenticated, async (req, res) => {
     try {
         const lastPostId = parseInt(req.query.lastPostId) || 0;
         const currentUserId = req.session.user.id;
 
-        // المنشورات الجديدة التي نُشرت بعد آخر منشور في صفحة المستخدم
+        // جلب المنشورات الجديدة
         const newPostsRes = await pool.query(`
             SELECT posts.*, users.display_name, users.role 
             FROM posts 
@@ -360,17 +360,39 @@ app.get('/api/live-sync', isAuthenticated, async (req, res) => {
             post.is_liked = postUserLiked.rows.length > 0;
         }
 
-        // جلب أحدث أرقام الإعجابات لجميع البوستات النشطة
+        // جلب أحدث أعداد الإعجابات لجميع العناصر
         const allLikesRes = await pool.query(`
             SELECT target_type, target_id, COUNT(*) as count 
             FROM likes 
             GROUP BY target_type, target_id
         `);
 
+        // جلب أحدث التعليقات التي أضيفت على منشورات المستخدم أو تعليقات عامة لتوليد الإشعارات الفورية
+        const recentActivityRes = await pool.query(`
+            SELECT comments.id, comments.post_id, comments.content, comments.created_at, 
+                   users.display_name as commenter_name, posts.user_id as post_owner_id, posts.is_pinned
+            FROM comments
+            JOIN users ON comments.user_id = users.id
+            JOIN posts ON comments.post_id = posts.id
+            WHERE comments.user_id != $1 AND comments.created_at >= (NOW() - INTERVAL '10 seconds')
+        `, [currentUserId]);
+
+        // جلب إشعارات الإعجابات الحديثة على منشورات أو تعليقات المستخدم
+        const recentLikesRes = await pool.query(`
+            SELECT likes.target_type, likes.target_id, users.display_name as liker_name, posts.user_id as post_owner_id
+            FROM likes
+            JOIN users ON likes.user_id = users.id
+            LEFT JOIN posts ON likes.target_type = 'post' AND likes.target_id = posts.id
+            WHERE likes.user_id != $1 
+            ORDER BY likes.id DESC LIMIT 5
+        `, [currentUserId]);
+
         res.json({
             success: true,
             newPosts: newPosts,
-            likesData: allLikesRes.rows
+            likesData: allLikesRes.rows,
+            recentComments: recentActivityRes.rows,
+            recentLikes: recentLikesRes.rows
         });
     } catch (err) {
         console.error('Live Sync Error:', err);
@@ -414,6 +436,7 @@ app.post('/posts', isAuthenticated, upload.single('attachment'), async (req, res
                     file_path: post.file_path,
                     file_type: post.file_type,
                     media_status: post.media_status,
+                    is_pinned: 0,
                     created_at: post.created_at,
                     display_name: req.session.user.display_name,
                     role: req.session.user.role,
