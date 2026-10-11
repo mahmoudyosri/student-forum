@@ -41,7 +41,6 @@
             min-height: 100vh;
         }
 
-        /* Header */
         header {
             background: rgba(255, 255, 255, 0.9);
             border-bottom: 1px solid var(--border);
@@ -93,7 +92,6 @@
             display: flex;
             align-items: center;
             gap: 8px;
-            box-shadow: inset 0 1px 2px rgba(0,0,0,0.02);
         }
 
         .btn-logout {
@@ -130,17 +128,14 @@
         .btn-admin-link:hover {
             background: var(--accent-hover);
             transform: translateY(-1px);
-            box-shadow: 0 6px 15px rgba(37, 99, 235, 0.3);
         }
 
-        /* Container */
         .container {
             max-width: 760px;
             margin: 2rem auto;
             padding: 0 1.2rem;
         }
 
-        /* Search Bar */
         .search-card {
             background: var(--card-bg);
             border-radius: var(--radius-lg);
@@ -151,12 +146,6 @@
             gap: 12px;
             box-shadow: var(--shadow-sm);
             align-items: center;
-            transition: var(--transition);
-        }
-
-        .search-card:focus-within {
-            border-color: var(--accent);
-            box-shadow: var(--shadow-md);
         }
 
         .search-card input {
@@ -166,13 +155,7 @@
             padding: 0.75rem 1.1rem;
             font-size: 0.95rem;
             outline: none;
-            transition: var(--transition);
             background: #f8fafc;
-        }
-
-        .search-card input:focus {
-            border-color: var(--accent);
-            background: #fff;
         }
 
         .search-card button {
@@ -183,15 +166,8 @@
             border-radius: var(--radius-md);
             font-weight: 700;
             cursor: pointer;
-            transition: var(--transition);
         }
 
-        .search-card button:hover {
-            background: var(--primary-light);
-            transform: translateY(-1px);
-        }
-
-        /* Post Cards */
         .card {
             background: var(--card-bg);
             border-radius: var(--radius-lg);
@@ -202,17 +178,11 @@
             transition: var(--transition);
         }
 
-        .card:hover {
-            box-shadow: var(--shadow-md);
-        }
-
         .pinned-card {
             border: 2px solid #3b82f6;
             background: linear-gradient(0deg, #f0f9ff 0%, #ffffff 100%);
-            box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.08);
         }
 
-        /* Create Post Area */
         .create-post-form {
             display: flex;
             flex-direction: column;
@@ -228,15 +198,8 @@
             outline: none;
             resize: vertical;
             min-height: 110px;
-            transition: var(--transition);
             background: #f8fafc;
             color: var(--text-main);
-        }
-
-        textarea:focus {
-            border-color: var(--accent);
-            background: #fff;
-            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.08);
         }
 
         .file-upload {
@@ -250,17 +213,6 @@
             border-radius: var(--radius-md);
             border: 1px dashed #cbd5e1;
             flex-wrap: wrap;
-            transition: var(--transition);
-        }
-
-        .file-upload:hover {
-            border-color: var(--accent);
-            background: #f1f5f9;
-        }
-
-        .file-upload input[type="file"] {
-            font-size: 0.85rem;
-            color: var(--text-muted);
         }
 
         .btn-post {
@@ -272,17 +224,9 @@
             font-weight: 700;
             cursor: pointer;
             align-self: flex-start;
-            transition: var(--transition);
             box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
         }
 
-        .btn-post:hover {
-            background: var(--accent-hover);
-            transform: translateY(-1px);
-            box-shadow: 0 6px 16px rgba(37, 99, 235, 0.3);
-        }
-
-        /* Post Header & Meta */
         .post-meta {
             display: flex;
             justify-content: space-between;
@@ -321,7 +265,6 @@
             padding: 3px 10px;
             border-radius: 8px;
             font-weight: 700;
-            box-shadow: 0 2px 5px rgba(37, 99, 235, 0.2);
         }
 
         .meta-left {
@@ -336,7 +279,6 @@
             font-weight: 600;
         }
 
-        /* Like & Action Buttons */
         .post-actions-bar {
             display: flex;
             align-items: center;
@@ -373,7 +315,6 @@
             border-color: #fecdd3;
         }
 
-        /* Report Button */
         .btn-report {
             background: #f8fafc;
             border: 1px solid #e2e8f0;
@@ -382,17 +323,14 @@
             cursor: pointer;
             padding: 4px 10px;
             border-radius: 6px;
-            transition: var(--transition);
             font-weight: 600;
         }
 
         .btn-report:hover {
             color: var(--danger);
             background: #fef2f2;
-            border-color: #fecaca;
         }
 
-        /* Post Content */
         .post-body {
             font-size: 1.02rem;
             line-height: 1.8;
@@ -410,7 +348,6 @@
             max-height: 500px;
             object-fit: contain;
             width: 100%;
-            background: #0f172a05;
         }
 
         .pdf-box {
@@ -425,17 +362,9 @@
             font-weight: 700;
             font-size: 0.9rem;
             border: 1px solid #fecaca;
-            transition: var(--transition);
             margin-top: 0.75rem;
-            box-shadow: 0 2px 5px rgba(239, 68, 68, 0.05);
         }
 
-        .pdf-box:hover {
-            background: #fee2e2;
-            transform: translateY(-1px);
-        }
-
-        /* Comments Section */
         .comments {
             background: #f8fafc;
             border-radius: var(--radius-md);
@@ -486,12 +415,6 @@
             font-size: 0.88rem;
             outline: none;
             background: #ffffff;
-            transition: var(--transition);
-        }
-
-        .comment-form input:focus {
-            border-color: var(--accent);
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
         }
 
         .comment-form button {
@@ -503,33 +426,17 @@
             font-size: 0.88rem;
             font-weight: 700;
             cursor: pointer;
-            transition: var(--transition);
         }
 
-        .comment-form button:hover {
-            background: #0369a1;
-            transform: translateY(-1px);
-        }
-
-        /* Modal / Dialog for Reporting */
         .modal-overlay {
             position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
+            top: 0; left: 0; right: 0; bottom: 0;
             background: rgba(15, 23, 42, 0.65);
             display: none;
             justify-content: center;
             align-items: center;
             z-index: 1000;
             backdrop-filter: blur(6px);
-            animation: fadeIn 0.2s ease-in-out;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
         }
 
         .modal-box {
@@ -539,19 +446,6 @@
             width: 90%;
             max-width: 460px;
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-            animation: scaleUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-
-        @keyframes scaleUp {
-            from { transform: scale(0.95); opacity: 0; }
-            to { transform: scale(1); opacity: 1; }
-        }
-
-        .modal-box h3 {
-            font-size: 1.2rem;
-            margin-bottom: 0.5rem;
-            color: var(--primary);
-            font-weight: 800;
         }
 
         .modal-box textarea {
@@ -574,11 +468,6 @@
             border-radius: var(--radius-md);
             font-weight: 700;
             cursor: pointer;
-            transition: var(--transition);
-        }
-
-        .btn-cancel:hover {
-            background: #cbd5e1;
         }
 
         .btn-submit-report {
@@ -589,13 +478,6 @@
             border-radius: var(--radius-md);
             font-weight: 700;
             cursor: pointer;
-            transition: var(--transition);
-            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
-        }
-
-        .btn-submit-report:hover {
-            background: #dc2626;
-            transform: translateY(-1px);
         }
     </style>
 </head>
@@ -616,7 +498,6 @@
     </header>
 
     <div class="container">
-        <!-- البحث في المناقشات -->
         <form action="/" method="GET" class="search-card">
             <input type="text" name="search" value="<%= search %>" placeholder="🔍 بحث بكلمة مفتاحية أو باسم الطالب...">
             <button type="submit">بحث</button>
@@ -625,7 +506,6 @@
             <% } %>
         </form>
 
-        <!-- إنشاء منشور جديد (AJAX) -->
         <div class="card">
             <form id="createPostForm" action="/posts" method="POST" enctype="multipart/form-data" class="create-post-form">
                 <textarea name="content" placeholder="طرح سؤال، استفسار، أو موضوع جديد للطلاب..."></textarea>
@@ -637,7 +517,6 @@
             </form>
         </div>
 
-        <!-- تغذية المنشورات -->
         <div id="postsContainer">
             <% if(posts.length === 0) { %>
                 <div id="noPostsMsg" class="card" style="text-align: center; color: var(--text-muted); padding: 2.5rem; font-weight: 600;">
@@ -679,14 +558,12 @@
                         </div>
                     <% } %>
 
-                    <!-- أزرار التفاعل والإعجاب للبوست -->
                     <div class="post-actions-bar">
                         <button class="btn-like <%= post.is_liked ? 'liked' : '' %>" onclick="toggleLike('post', <%= post.id %>, this)">
                             ❤️ <span class="like-count"><%= post.likes_count %></span> إعجاب
                         </button>
                     </div>
 
-                    <!-- التعليقات -->
                     <div class="comments">
                         <div class="comments-list">
                             <% post.comments.forEach(comment => { %>
@@ -717,7 +594,6 @@
         </div>
     </div>
 
-    <!-- نافذة الإبلاغ (Modal) -->
     <div id="reportModal" class="modal-overlay">
         <div class="modal-box">
             <h3>🚨 إبلاغ عن محتوى غير لائق</h3>
@@ -759,7 +635,10 @@
             try {
                 const response = await fetch('/report', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
                     body: JSON.stringify({
                         target_type: currentTargetType,
                         target_id: currentTargetId,
@@ -781,12 +660,15 @@
             }
         }
 
-        // --- نظام الإعجابات الفوري (AJAX Likes) ---
+        // نظام الإعجابات الفوري (AJAX Likes)
         async function toggleLike(targetType, targetId, btnElement) {
             try {
                 const response = await fetch('/like', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
                     body: JSON.stringify({ target_type: targetType, target_id: targetId })
                 });
                 const data = await response.json();
@@ -804,7 +686,7 @@
             }
         }
 
-        // --- نشر المنشورات بدون ريفرش (AJAX Posts) ---
+        // نشر المنشورات بدون ريفرش (AJAX Posts)
         document.getElementById('createPostForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             const formData = new FormData(this);
@@ -813,7 +695,10 @@
                 const response = await fetch('/posts', {
                     method: 'POST',
                     body: formData,
-                    headers: { 'Accept': 'application/json' }
+                    headers: { 
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
                 });
                 const data = await response.json();
 
@@ -869,7 +754,7 @@
             }
         });
 
-        // --- إضافة التعليقات بدون ريفرش (AJAX Comments) ---
+        // إضافة التعليقات بدون ريفرش (AJAX Comments)
         async function submitComment(event, postId) {
             event.preventDefault();
             const form = event.target;
@@ -880,7 +765,11 @@
             try {
                 const response = await fetch(`/posts/${postId}/comments`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json', 
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
                     body: JSON.stringify({ content })
                 });
                 const data = await response.json();
