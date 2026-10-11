@@ -10,7 +10,7 @@ const bcrypt = require('bcryptjs');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// الاتصال بقاعدة بيانات PostgreSQL المجانية
+// الاتصال بقاعدة بيانات PostgreSQL
 const connectionString = process.env.DATABASE_URL || 'postgresql://sqlite_data_pk5r_user:k2mq3R6TCkI29LWipvlRsAHqJy8Lptuo@dpg-db1ml097lnhs73dl51p0-a/sqlite_data_pk5r';
 
 const pool = new Pool({
@@ -148,7 +148,7 @@ function isAuthenticated(req, res, next) {
     if (req.session && req.session.user) {
         if (req.session.user.is_banned) {
             req.session.destroy();
-            return res.status(403).send('تم حظر حسابك من استخدام المنصة.');
+            return res.status(403).json({ success: false, error: 'تم حظر حسابك من استخدام المنصة.' });
         }
         return next();
     }
@@ -327,7 +327,7 @@ app.get('/', isAuthenticated, async (req, res) => {
     }
 });
 
-// إنشاء منشور جديد (مع استجابة JSON للـ AJAX بدون ريفرش)
+// إنشاء منشور جديد (استجابة JSON المباشرة للـ AJAX)
 app.post('/posts', isAuthenticated, upload.single('attachment'), async (req, res) => {
     try {
         const { content } = req.body;
@@ -354,37 +354,32 @@ app.post('/posts', isAuthenticated, upload.single('attachment'), async (req, res
             
             const post = newPostRes.rows[0];
             
-            if (req.headers['x-requested-with'] === 'XMLHttpRequest' || (req.headers.accept && req.headers.accept.includes('json'))) {
-                return res.json({
-                    success: true,
-                    post: {
-                        id: post.id,
-                        content: post.content,
-                        file_path: post.file_path,
-                        file_type: post.file_type,
-                        media_status: post.media_status,
-                        created_at: post.created_at,
-                        display_name: req.session.user.display_name,
-                        role: req.session.user.role,
-                        likes_count: 0,
-                        is_liked: false,
-                        comments: []
-                    }
-                });
-            }
+            return res.json({
+                success: true,
+                message: mediaStatus === 'pending' ? 'تم نشر المنشور وسوف تظهر الصورة فور مراجعتها من الإدارة.' : 'تم نشر الموضوع بنجاح!',
+                post: {
+                    id: post.id,
+                    content: post.content,
+                    file_path: post.file_path,
+                    file_type: post.file_type,
+                    media_status: post.media_status,
+                    created_at: post.created_at,
+                    display_name: req.session.user.display_name,
+                    role: req.session.user.role,
+                    likes_count: 0,
+                    is_liked: false,
+                    comments: []
+                }
+            });
         }
-
-        res.redirect(req.session.user.role === 'admin' ? '/admin' : '/');
+        res.status(400).json({ success: false, error: 'يرجى كتابة نص أو إرفاق ملف للتمكن من النشر.' });
     } catch (err) {
         console.error('Create Post Error:', err);
-        if (req.headers['x-requested-with'] === 'XMLHttpRequest' || (req.headers.accept && req.headers.accept.includes('json'))) {
-            return res.status(500).json({ success: false, error: 'خطأ في نشر المنشور' });
-        }
-        res.redirect('/');
+        res.status(500).json({ success: false, error: 'حدث خطأ أثناء نشر الموضوع.' });
     }
 });
 
-// إضافة تعليق جديد (مع استجابة JSON للـ AJAX بدون ريفرش)
+// إضافة تعليق جديد (استجابة JSON للـ AJAX)
 app.post('/posts/:id/comments', isAuthenticated, async (req, res) => {
     try {
         const { content } = req.body;
@@ -396,39 +391,35 @@ app.post('/posts/:id/comments', isAuthenticated, async (req, res) => {
             
             const comment = commentRes.rows[0];
 
-            if (req.headers['x-requested-with'] === 'XMLHttpRequest' || (req.headers.accept && req.headers.accept.includes('json'))) {
-                return res.json({
-                    success: true,
-                    comment: {
-                        id: comment.id,
-                        post_id: comment.post_id,
-                        content: comment.content,
-                        created_at: comment.created_at,
-                        display_name: req.session.user.display_name,
-                        likes_count: 0,
-                        is_liked: false
-                    }
-                });
-            }
+            return res.json({
+                success: true,
+                message: 'تم إضافة تعليقك بنجاح!',
+                comment: {
+                    id: comment.id,
+                    post_id: comment.post_id,
+                    content: comment.content,
+                    created_at: comment.created_at,
+                    display_name: req.session.user.display_name,
+                    likes_count: 0,
+                    is_liked: false
+                }
+            });
         }
-        res.redirect('/');
+        res.status(400).json({ success: false, error: 'التعليق لا يمكن أن يكون فارغاً.' });
     } catch (err) {
         console.error('Comment Error:', err);
-        if (req.headers['x-requested-with'] === 'XMLHttpRequest' || (req.headers.accept && req.headers.accept.includes('json'))) {
-            return res.status(500).json({ success: false, error: 'خطأ في إضافة التعليق' });
-        }
-        res.redirect('/');
+        res.status(500).json({ success: false, error: 'حدث خطأ أثناء إضافة التعليق.' });
     }
 });
 
-// مسار تسجيل الإعجاب (Likes API)
+// تسجيل/إلغاء الإعجاب (Likes API)
 app.post('/like', isAuthenticated, async (req, res) => {
     try {
         const { target_type, target_id } = req.body;
         const userId = req.session.user.id;
 
         if (!['post', 'comment'].includes(target_type) || !target_id) {
-            return res.status(400).json({ success: false, error: 'بيانات غير صالحة' });
+            return res.status(400).json({ success: false, error: 'بيانات التفاعل غير صحيحة.' });
         }
 
         const existingLike = await pool.query(
@@ -448,10 +439,15 @@ app.post('/like', isAuthenticated, async (req, res) => {
         const countRes = await pool.query('SELECT COUNT(*) FROM likes WHERE target_type = $1 AND target_id = $2', [target_type, target_id]);
         const likesCount = parseInt(countRes.rows[0].count);
 
-        res.json({ success: true, liked, likesCount });
+        return res.json({ 
+            success: true, 
+            liked, 
+            likesCount, 
+            message: liked ? 'تم إبداء الإعجاب ❤️' : 'تم إزالة الإعجاب' 
+        });
     } catch (err) {
         console.error('Like Error:', err);
-        res.status(500).json({ success: false, error: 'حدث خطأ أثناء معالجة الإعجاب' });
+        return res.status(500).json({ success: false, error: 'حدث خطأ أثناء تسجيل تفاعلك.' });
     }
 });
 
