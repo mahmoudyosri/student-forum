@@ -120,6 +120,17 @@ async function initDB() {
         );
     `);
 
+    // جدول الإعجابات (للبوستات والتعليقات)
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS likes (
+            id SERIAL PRIMARY KEY,
+            user_id INT REFERENCES users(id) ON DELETE CASCADE,
+            target_type VARCHAR(50) NOT NULL, -- 'post' or 'comment'
+            target_id INT NOT NULL,
+            UNIQUE(user_id, target_type, target_id)
+        );
+    `);
+
     // تهيئة حساب الأدمن
     const ADMIN_NID = "29000000000000";
     const adminCheck = await pool.query('SELECT * FROM users WHERE role = $1 OR national_id = $2', ['admin', ADMIN_NID]);
@@ -131,7 +142,7 @@ async function initDB() {
         await pool.query('UPDATE users SET national_id = $1, password = $2 WHERE role = $3', [ADMIN_NID, hashedAdminPass, 'admin']);
     }
 
-    console.log(`⚡ تم تهيئة قاعدة بيانات PostgreSQL بنجاح.`);
+    console.log(`⚡ تم تهيئة قاعدة بيانات PostgreSQL والجداول بنجاح.`);
 }
 
 function isAuthenticated(req, res, next) {
@@ -141,6 +152,9 @@ function isAuthenticated(req, res, next) {
             return res.status(403).send('تم حظر حسابك من استخدام المنصة.');
         }
         return next();
+    }
+    if (req.xhr || req.headers.accept.indexOf('json') > -1) {
+        return res.status(401).json({ success: false, error: 'غير مسجل الدخول' });
     }
     res.redirect('/login');
 }
@@ -283,6 +297,7 @@ app.get('/', isAuthenticated, async (req, res) => {
         const posts = postsRes.rows;
 
         for (let post of posts) {
+            // جلب التعليقات
             const commentsRes = await pool.query(`
                 SELECT comments.*, users.display_name 
                 FROM comments 
@@ -291,6 +306,22 @@ app.get('/', isAuthenticated, async (req, res) => {
                 ORDER BY comments.created_at ASC
             `, [post.id]);
             post.comments = commentsRes.rows;
+
+            // حساب عدد إعجابات البوست ومعرفة هل المستخدم الحالي أعجب به أم لا
+            const postLikesCount = await pool.query('SELECT COUNT(*) FROM likes WHERE target_type = $1 AND target_id = $2', ['post', post.id]);
+            const postUserLiked = await pool.query('SELECT id FROM likes WHERE target_type = $1 AND target_id = $2 AND user_id = $3', ['post', post.id, currentUserId]);
+            
+            post.likes_count = parseInt(postLikesCount.rows[0].count);
+            post.is_liked = postUserLiked.rows.length > 0;
+
+            // حساب إعجابات التعليقات
+            for (let comment of post.comments) {
+                const commentLikesCount = await pool.query('SELECT COUNT(*) FROM likes WHERE target_type = $1 AND target_id = $2', ['comment', comment.id]);
+                const commentUserLiked = await pool.query('SELECT id FROM likes WHERE target_type = $1 AND target_id = $2 AND user_id = $3', ['comment', comment.id, currentUserId]);
+                
+                comment.likes_count = parseInt(commentLikesCount.rows[0].count);
+                comment.is_liked = commentUserLiked.rows.length > 0;
+            }
         }
 
         res.render('index', { user: req.session.user, posts, search: req.query.search || '' });
@@ -300,6 +331,7 @@ app.get('/', isAuthenticated, async (req, res) => {
     }
 });
 
+// إنشاء منشور جديد (يدعم AJAX/Fetch بدون ريفرش)
 app.post('/posts', isAuthenticated, upload.single('attachment'), async (req, res) => {
     try {
         const { content } = req.body;
@@ -319,32 +351,115 @@ app.post('/posts', isAuthenticated, upload.single('attachment'), async (req, res
         }
 
         if (content || filePath) {
-            await pool.query(
-                'INSERT INTO posts (user_id, content, file_path, file_type, media_status) VALUES ($1, $2, $3, $4, $5)',
+            const newPostRes = await pool.query(
+                'INSERT INTO posts (user_id, content, file_path, file_type, media_status) VALUES ($1, $2, $3, $4, $5) RETURNING *',
                 [req.session.user.id, content, filePath, fileType, mediaStatus]
             );
+            
+            const post = newPostRes.rows[0];
+            
+            if (req.xhr || req.headers.accept.indexOf('json') > -1) {
+                return res.json({
+                    success: true,
+                    post: {
+                        id: post.id,
+                        content: post.content,
+                        file_path: post.file_path,
+                        file_type: post.file_type,
+                        media_status: post.media_status,
+                        created_at: post.created_at,
+                        display_name: req.session.user.display_name,
+                        role: req.session.user.role,
+                        likes_count: 0,
+                        is_liked: false,
+                        comments: []
+                    }
+                });
+            }
         }
 
         res.redirect(req.session.user.role === 'admin' ? '/admin' : '/');
     } catch (err) {
         console.error('Create Post Error:', err);
+        if (req.xhr || req.headers.accept.indexOf('json') > -1) {
+            return res.status(500).json({ success: false, error: 'خطأ في نشر المنشور' });
+        }
         res.redirect('/');
     }
 });
 
+// إضافة تعليق جديد (يدعم AJAX بدون ريفرش)
 app.post('/posts/:id/comments', isAuthenticated, async (req, res) => {
     try {
         const { content } = req.body;
         if (content && content.trim()) {
-            await pool.query(
-                'INSERT INTO comments (post_id, user_id, content) VALUES ($1, $2, $3)',
-                [req.params.id, req.session.user.id, content]
+            const commentRes = await pool.query(
+                'INSERT INTO comments (post_id, user_id, content) VALUES ($1, $2, $3) RETURNING *',
+                [req.params.id, req.session.user.id, content.trim()]
             );
+            
+            const comment = commentRes.rows[0];
+
+            if (req.xhr || req.headers.accept.indexOf('json') > -1) {
+                return res.json({
+                    success: true,
+                    comment: {
+                        id: comment.id,
+                        post_id: comment.post_id,
+                        content: comment.content,
+                        created_at: comment.created_at,
+                        display_name: req.session.user.display_name,
+                        likes_count: 0,
+                        is_liked: false
+                    }
+                });
+            }
         }
         res.redirect('/');
     } catch (err) {
         console.error('Comment Error:', err);
+        if (req.xhr || req.headers.accept.indexOf('json') > -1) {
+            return res.status(500).json({ success: false, error: 'خطأ في إضافة التعليق' });
+        }
         res.redirect('/');
+    }
+});
+
+// مسار تسجيل الإعجاب وإلغائه (Likes API - بدون ريفرش)
+app.post('/like', isAuthenticated, async (req, res) => {
+    try {
+        const { target_type, target_id } = req.body;
+        const userId = req.session.user.id;
+
+        if (!['post', 'comment'].includes(target_type) || !target_id) {
+            return res.status(400).json({ success: false, error: 'بيانات غير صالحة' });
+        }
+
+        // تحقق مما إذا كان المستخدم قد أعجب به من قبل
+        const existingLike = await pool.query(
+            'SELECT id FROM likes WHERE user_id = $1 AND target_type = $2 AND target_id = $3',
+            [userId, target_type, target_id]
+        );
+
+        let liked = false;
+        if (existingLike.rows.length > 0) {
+            // إزالة الإعجاب إذا كان موجوداً
+            await pool.query('DELETE FROM likes WHERE id = $1', [existingLike.rows[0].id]);
+            liked = false;
+        } else {
+            // إضافة إعجاب جديد
+            await pool.query('INSERT INTO likes (user_id, target_type, target_id) VALUES ($1, $2, $3)', [userId, target_type, target_id]);
+            liked = true;
+        }
+
+        // حساب العدد الإجمالي للإعجابات لهذا العنصر
+        const countRes = await pool.query('SELECT COUNT(*) FROM likes WHERE target_type = $1 AND target_id = $2', [target_type, target_id]);
+        const likesCount = parseInt(countRes.rows[0].count);
+
+        res.json({ success: true, liked, likesCount });
+    } catch (err) {
+        console.error('Like Error:', err);
+        res.status(500).json({ success: false, error: 'حدث خطأ أثناء معالجة الإعجاب' });
     }
 });
 
@@ -585,27 +700,6 @@ app.post('/admin/reports/:id/ban-user', isAdmin, async (req, res) => {
             if (userIdToBan) {
                 await pool.query('UPDATE users SET is_banned = 1, ban_reason = $1 WHERE id = $2', ['نشر محتوى مخالف بناءً على بلاغ معتمد', userIdToBan]);
             }
-            await pool.query('DELETE FROM reports WHERE id = $1', [req.params.id]);
-        }
-        res.redirect('/admin');
-    } catch (err) {
-        res.redirect('/admin');
-    }
-});
-
-app.post('/admin/reports/:id/ban-reporter', isAdmin, async (req, res) => {
-    try {
-        const reportRes = await pool.query('SELECT * FROM reports WHERE id = $1', [req.params.id]);
-        const report = reportRes.rows[0];
-        if (report) {
-            await pool.query('UPDATE users SET is_banned = 1, ban_reason = $1 WHERE id = $2', ['تقديم بلاغ كاذب ومضلل', report.reporter_id]);
-            
-            if (report.target_type === 'post') {
-                await pool.query("UPDATE posts SET media_status = 'approved' WHERE id = $1", [report.target_id]);
-            } else if (report.target_type === 'comment') {
-                await pool.query("UPDATE comments SET is_hidden = 0 WHERE id = $1", [report.target_id]);
-            }
-
             await pool.query('DELETE FROM reports WHERE id = $1', [req.params.id]);
         }
         res.redirect('/admin');
