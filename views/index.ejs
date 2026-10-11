@@ -37,7 +37,7 @@
         body {
             background-color: var(--bg);
             color: var(--text-main);
-            padding-bottom: 80px;
+            padding-bottom: 90px;
             min-height: 100vh;
         }
 
@@ -53,6 +53,10 @@
             z-index: 100;
             box-shadow: 0 4px 20px rgba(0,0,0,0.03);
             backdrop-filter: blur(12px);
+        }
+
+        @media (max-width: 768px) {
+            header { padding: 0.75rem 1rem; }
         }
 
         .header-brand {
@@ -92,6 +96,10 @@
             display: flex;
             align-items: center;
             gap: 8px;
+        }
+
+        @media (max-width: 768px) {
+            .user-badge span:not(:first-child) { display: none; }
         }
 
         .btn-logout {
@@ -136,6 +144,10 @@
             padding: 0 1.2rem;
         }
 
+        @media (max-width: 768px) {
+            .container { margin: 1rem auto; padding: 0 0.75rem; }
+        }
+
         .search-card {
             background: var(--card-bg);
             border-radius: var(--radius-lg);
@@ -176,6 +188,10 @@
             margin-bottom: 1.5rem;
             box-shadow: var(--shadow-sm);
             transition: var(--transition);
+        }
+
+        @media (max-width: 768px) {
+            .card { padding: 1rem; }
         }
 
         .pinned-card {
@@ -303,12 +319,6 @@
             transition: var(--transition);
         }
 
-        .btn-like:hover {
-            background: #f1f5f9;
-            color: #e11d48;
-            border-color: #fecdd3;
-        }
-
         .btn-like.liked {
             background: #fff1f2;
             color: #e11d48;
@@ -331,13 +341,22 @@
             background: #fef2f2;
         }
 
+        /* تنسيق النصوص الطويلة وزر عرض المزيد */
+        .post-body-container { position: relative; margin-bottom: 1rem; }
         .post-body {
             font-size: 1.02rem;
             line-height: 1.8;
-            margin-bottom: 1.25rem;
             color: #334155;
             white-space: pre-wrap;
             word-break: break-word;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+        .post-body.collapsed { max-height: 120px; }
+        .read-more-btn {
+            background: none; border: none; color: var(--accent);
+            font-weight: 700; font-size: 0.88rem; cursor: pointer;
+            margin-top: 6px; display: inline-block; padding: 0;
         }
 
         .media-preview img {
@@ -345,7 +364,7 @@
             border-radius: var(--radius-md);
             border: 1px solid var(--border);
             margin-top: 0.75rem;
-            max-height: 500px;
+            max-height: 400px;
             object-fit: contain;
             width: 100%;
         }
@@ -383,9 +402,7 @@
             gap: 10px;
         }
 
-        .comment-item:last-child {
-            border-bottom: none;
-        }
+        .comment-item:last-child { border-bottom: none; }
 
         .comment-content {
             flex: 1;
@@ -409,7 +426,7 @@
 
         .comment-form input {
             flex: 1;
-            padding: 0.7rem 1rem;
+            padding: 0.7rem 1.1rem;
             border: 1px solid var(--border);
             border-radius: var(--radius-md);
             font-size: 0.88rem;
@@ -428,6 +445,7 @@
             cursor: pointer;
         }
 
+        /* نافذة الإبلاغ */
         .modal-overlay {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
@@ -480,7 +498,14 @@
             cursor: pointer;
         }
 
-        /* حاوية الإشعارات Toast Notifications */
+        /* شريط تثبيت التطبيق أسفل الشاشة */
+        #pwaInstallBanner {
+            position: fixed; bottom: 0; left: 0; right: 0; background: #0f172a; color: white; padding: 12px 20px;
+            display: none; justify-content: space-between; align-items: center; z-index: 1000; box-shadow: 0 -4px 15px rgba(0,0,0,0.2);
+        }
+        #pwaInstallBanner button { background: var(--accent); color: white; border: none; padding: 6px 14px; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 0.85rem; }
+
+        /* حاوية الإشعارات Toast */
         #toastContainer {
             position: fixed;
             bottom: 25px;
@@ -505,7 +530,7 @@
             display: flex;
             align-items: center;
             gap: 10px;
-            animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1), fadeOut 0.3s ease 2.7s forwards;
+            animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
         .toast.success { background: #10b981; }
@@ -515,11 +540,6 @@
         @keyframes slideIn {
             from { transform: translateY(100%); opacity: 0; }
             to { transform: translateY(0); opacity: 1; }
-        }
-
-        @keyframes fadeOut {
-            from { opacity: 1; }
-            to { opacity: 0; }
         }
     </style>
 </head>
@@ -583,7 +603,13 @@
                     </div>
 
                     <% if(post.content) { %>
-                        <div class="post-body"><%= post.content %></div>
+                        <% const isLong = post.content.length > 250; %>
+                        <div class="post-body-container">
+                            <div class="post-body <%= isLong ? 'collapsed' : '' %>"><%= post.content %></div>
+                            <% if(isLong) { %>
+                                <button class="read-more-btn" onclick="toggleReadMore(this)">عرض المزيد</button>
+                            <% } %>
+                        </div>
                     <% } %>
 
                     <% if(post.file_path) { %>
@@ -601,7 +627,7 @@
                     <% } %>
 
                     <div class="post-actions-bar">
-                        <button class="btn-like <%= post.is_liked ? 'liked' : '' %>" onclick="toggleLike('post', <%= post.id %>, this)">
+                        <button class="btn-like <%= post.is_liked ? 'liked' : '' %>" data-target-type="post" data-target-id="<%= post.id %>" onclick="toggleLike('post', <%= post.id %>, this)">
                             ❤️ <span class="like-count"><%= post.likes_count %></span> إعجاب
                         </button>
                     </div>
@@ -616,7 +642,7 @@
                                             <span style="font-size: 0.72rem; color: #94a3b8; font-weight: 600;">
                                                 (<%= new Date(comment.created_at).toLocaleString('ar-EG', { timeZone: 'Africa/Cairo', timeStyle: 'short' }) %>)
                                             </span>
-                                            <button class="btn-like <%= comment.is_liked ? 'liked' : '' %>" style="font-size:0.75rem; padding:2px 6px;" onclick="toggleLike('comment', <%= comment.id %>, this)">
+                                            <button class="btn-like <%= comment.is_liked ? 'liked' : '' %>" data-target-type="comment" data-target-id="<%= comment.id %>" style="font-size:0.75rem; padding:2px 6px;" onclick="toggleLike('comment', <%= comment.id %>, this)">
                                                 ❤️ <span class="like-count"><%= comment.likes_count %></span>
                                             </button>
                                         </div>
@@ -636,7 +662,7 @@
         </div>
     </div>
 
-    <!-- نافذة الإبلاغ (Modal) -->
+    <!-- نافذة الإبلاغ -->
     <div id="reportModal" class="modal-overlay">
         <div class="modal-box">
             <h3>🚨 إبلاغ عن محتوى غير لائق</h3>
@@ -651,27 +677,55 @@
         </div>
     </div>
 
-    <!-- حاوية الإشعارات اللحظية -->
+    <!-- شريط تثبيت التطبيق على الموبايل -->
+    <div id="pwaInstallBanner">
+        <span>📱 ثبت المنصة على هاتفك كتطبيق سريع!</span>
+        <button onclick="installApp()">تثبيت</button>
+    </div>
+
     <div id="toastContainer"></div>
 
     <script>
-        // دالة إظهار الإشعارات الأنيقة (Toast Notification)
         function showToast(message, type = 'success') {
             const container = document.getElementById('toastContainer');
             const toast = document.createElement('div');
             toast.className = `toast ${type}`;
-            
-            let icon = '🔔';
-            if(type === 'success') icon = '✅';
-            if(type === 'error') icon = '⚠️';
-            if(type === 'info') icon = 'ℹ️';
-
+            let icon = type === 'success' ? '✅' : (type === 'error' ? '⚠️' : '🔔');
             toast.innerHTML = `<span>${icon}</span> <span>${message}</span>`;
             container.appendChild(toast);
+            setTimeout(() => toast.remove(), 3500);
+        }
 
-            setTimeout(() => {
-                toast.remove();
-            }, 3000);
+        // عرض المزيد للنصوص الطويلة
+        function toggleReadMore(btn) {
+            const body = btn.previousElementSibling;
+            if (body.classList.contains('collapsed')) {
+                body.classList.remove('collapsed');
+                btn.textContent = 'إخفاء التفاصيل';
+            } else {
+                body.classList.add('collapsed');
+                btn.textContent = 'عرض المزيد';
+            }
+        }
+
+        // تثبيت التطبيق PWA
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            document.getElementById('pwaInstallBanner').style.display = 'flex';
+        });
+
+        function installApp() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        document.getElementById('pwaInstallBanner').style.display = 'none';
+                    }
+                    deferredPrompt = null;
+                });
+            }
         }
 
         let currentTargetType = null;
@@ -692,37 +746,156 @@
 
         async function submitReport() {
             const reason = document.getElementById('reportReason').value.trim();
-            if (!reason) {
-                showToast('يرجى كتابة سبب الإبلاغ.', 'error');
-                return;
-            }
+            if (!reason) return showToast('يرجى كتابة سبب الإبلاغ.', 'error');
 
             try {
                 const response = await fetch('/report', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        target_type: currentTargetType,
-                        target_id: currentTargetId,
-                        reason: reason
-                    })
+                    body: JSON.stringify({ target_type: currentTargetType, target_id: currentTargetId, reason })
                 });
-
                 const data = await response.json();
                 if (data.success) {
                     showToast(data.message || 'تم إرسال البلاغ بنجاح.', 'info');
                     closeReportModal();
-                    setTimeout(() => window.location.reload(), 1200);
                 } else {
-                    showToast(data.error || 'حدث خطأ أثناء إرسال البلاغ.', 'error');
+                    showToast(data.error || 'خطأ في إرسال البلاغ.', 'error');
                 }
             } catch (err) {
-                console.error('Report submission error:', err);
                 showToast('تعذر الاتصال بالسيرفر.', 'error');
             }
         }
 
-        // 1. الإعجابات بدون ريفرش
+        // التحديث الفوري اللحظي للمحتوى والإشعارات كل 3 ثوانٍ
+        function getMaxPostId() {
+            const posts = document.querySelectorAll('.card[data-post-id]');
+            let maxId = 0;
+            posts.forEach(p => {
+                const id = parseInt(p.dataset.postId);
+                if (id > maxId) maxId = id;
+            });
+            return maxId;
+        }
+
+        setInterval(async () => {
+            try {
+                const lastPostId = getMaxPostId();
+                const response = await fetch(`/api/live-sync?lastPostId=${lastPostId}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    // 1. منشورات جديدة
+                    if (data.newPosts && data.newPosts.length > 0) {
+                        data.newPosts.forEach(post => {
+                            if (!document.querySelector(`.card[data-post-id="${post.id}"]`)) {
+                                renderPostToDOM(post);
+                                if (post.role === 'admin') {
+                                    showToast(`🚨 تنبيه رسمي من الإدارة: ${post.content ? post.content.substring(0, 35) + '...' : 'موضوع جديد'}`, 'info');
+                                } else {
+                                    showToast(`قام ${post.display_name} بنشر موضوع جديد!`, 'info');
+                                }
+                            }
+                        });
+                    }
+
+                    // 2. تحديث اللايكات الحية
+                    if (data.likesData) {
+                        data.likesData.forEach(item => {
+                            const btn = document.querySelector(`button[data-target-type="${item.target_type}"][data-target-id="${item.target_id}"]`);
+                            if (btn) {
+                                const countSpan = btn.querySelector('.like-count');
+                                if (countSpan && countSpan.textContent !== String(item.count)) {
+                                    countSpan.textContent = item.count;
+                                }
+                            }
+                        });
+                    }
+
+                    // 3. التعليقات الجديدة الفورية وإشعارات من كتب تعليقاً
+                    if (data.recentComments && data.recentComments.length > 0) {
+                        data.recentComments.forEach(comm => {
+                            const postCard = document.querySelector(`.card[data-post-id="${comm.post_id}"]`);
+                            if (postCard) {
+                                const list = postCard.querySelector('.comments-list');
+                                if (!list.querySelector(`[data-comment-id="${comm.id}"]`)) {
+                                    const commentHTML = `
+                                        <div class="comment-item" data-comment-id="${comm.id}">
+                                            <div class="comment-content">
+                                                <b>${comm.commenter_name}:</b> ${comm.content}
+                                                <div class="comment-footer">
+                                                    <span style="font-size: 0.72rem; color: #94a3b8; font-weight: 600;">(الآن)</span>
+                                                    <button class="btn-like" data-target-type="comment" data-target-id="${comm.id}" style="font-size:0.75rem; padding:2px 6px;" onclick="toggleLike('comment', ${comm.id}, this)">
+                                                        ❤️ <span class="like-count">0</span>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <button class="btn-report" onclick="openReportModal('comment', ${comm.id})">🚨 إبلاغ</button>
+                                        </div>
+                                    `;
+                                    list.insertAdjacentHTML('beforeend', commentHTML);
+                                    showToast(`💬 تعليق جديد من ${comm.commenter_name} على منشور بالساحة!`, 'success');
+                                }
+                            }
+                        });
+                    }
+                }
+            } catch (err) {
+                console.error('Live Sync Error:', err);
+            }
+        }, 3000);
+
+        function renderPostToDOM(post) {
+            const noMsg = document.getElementById('noPostsMsg');
+            if (noMsg) noMsg.remove();
+
+            let mediaHtml = '';
+            if (post.file_path) {
+                if (post.media_status === 'pending') {
+                    mediaHtml = `<div style="background: #fffbeb; color: #b45309; padding: 0.85rem; border-radius: 10px; font-size: 0.88rem; border: 1px dashed #fcd34d; font-weight: 600;">⏳ الصورة قيد مراجعة الإدارة وسوف تظهر للجميع فور اعتمادها.</div>`;
+                } else if (post.file_type === 'image') {
+                    mediaHtml = `<img src="${post.file_path}" alt="صورة مرفقة" loading="lazy">`;
+                } else if (post.file_type === 'pdf') {
+                    mediaHtml = `<a href="${post.file_path}" target="_blank" class="pdf-box">📄 فتح ملف PDF المرفق</a>`;
+                }
+            }
+
+            const isLong = post.content && post.content.length > 250;
+            const newPostHTML = `
+                <div class="card ${post.is_pinned ? 'pinned-card' : ''}" data-post-id="${post.id}">
+                    <div class="post-meta">
+                        <div class="author-box">
+                            <span class="author">${post.display_name}</span>
+                            ${post.role === 'admin' ? '<span class="role-tag">إدارة المعهد</span>' : ''}
+                            ${post.is_pinned ? '<span class="pin-badge">📌 مثبت</span>' : ''}
+                        </div>
+                        <div class="meta-left">
+                            <span class="date">الآن</span>
+                            <button class="btn-report" onclick="openReportModal('post', ${post.id})">🚨 إبلاغ</button>
+                        </div>
+                    </div>
+                    ${post.content ? `
+                        <div class="post-body-container">
+                            <div class="post-body ${isLong ? 'collapsed' : ''}">${post.content}</div>${isLong ? '<button class="read-more-btn" onclick="toggleReadMore(this)">عرض المزيد</button>' : ''}
+                        </div>
+                    ` : ''}
+                    <div class="media-preview">${mediaHtml}</div>
+                    <div class="post-actions-bar">
+                        <button class="btn-like" data-target-type="post" data-target-id="${post.id}" onclick="toggleLike('post', ${post.id}, this)">
+                            ❤️ <span class="like-count">${post.likes_count || 0}</span> إعجاب
+                        </button>
+                    </div>
+                    <div class="comments">
+                        <div class="comments-list"></div>
+                        <form class="comment-form" onsubmit="submitComment(event, ${post.id})">
+                            <input type="text" name="content" placeholder="اكتب تعليقاً..." required>
+                            <button type="submit">تعليق</button>
+                        </form>
+                    </div>
+                </div>
+            `;
+            document.getElementById('postsContainer').insertAdjacentHTML('afterbegin', newPostHTML);
+        }
+
         async function toggleLike(targetType, targetId, btnElement) {
             try {
                 const response = await fetch('/like', {
@@ -740,85 +913,32 @@
                         btnElement.classList.remove('liked');
                     }
                     showToast(data.message, 'info');
-                } else {
-                    showToast(data.error || 'خطأ في العملية', 'error');
                 }
             } catch (err) {
-                console.error('Like error:', err);
-                showToast('حدث خطأ في الاتصال بالسيرفر.', 'error');
+                showToast('خطأ في الاتصال بالسيرفر.', 'error');
             }
         }
 
-        // 2. نشر منشور جديد بدون ريفرش
         document.getElementById('createPostForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             const formData = new FormData(this);
 
             try {
-                const response = await fetch('/posts', {
-                    method: 'POST',
-                    body: formData
-                });
+                const response = await fetch('/posts', { method: 'POST', body: formData });
                 const data = await response.json();
 
                 if (data.success) {
                     this.reset();
                     showToast(data.message, 'success');
-
-                    const noMsg = document.getElementById('noPostsMsg');
-                    if (noMsg) noMsg.remove();
-
-                    const post = data.post;
-                    let mediaHtml = '';
-                    if (post.file_path) {
-                        if (post.media_status === 'pending') {
-                            mediaHtml = `<div style="background: #fffbeb; color: #b45309; padding: 0.85rem; border-radius: 10px; font-size: 0.88rem; border: 1px dashed #fcd34d; font-weight: 600;">⏳ الصورة قيد مراجعة الإدارة وسوف تظهر للجميع فور اعتمادها.</div>`;
-                        } else if (post.file_type === 'image') {
-                            mediaHtml = `<img src="${post.file_path}" alt="صورة مرفقة" loading="lazy">`;
-                        } else if (post.file_type === 'pdf') {
-                            mediaHtml = `<a href="${post.file_path}" target="_blank" class="pdf-box">📄 فتح ملف PDF المرفق</a>`;
-                        }
-                    }
-
-                    const newPostHTML = `
-                        <div class="card" data-post-id="${post.id}">
-                            <div class="post-meta">
-                                <div class="author-box">
-                                    <span class="author">${post.display_name}</span>
-                                    ${post.role === 'admin' ? '<span class="role-tag">إدارة المعهد</span>' : ''}
-                                </div>
-                                <div class="meta-left">
-                                    <span class="date">الآن</span>
-                                    <button class="btn-report" onclick="openReportModal('post', ${post.id})">🚨 إبلاغ</button>
-                                </div>
-                            </div>
-                            ${post.content ? `<div class="post-body">${post.content}</div>` : ''}
-                            <div class="media-preview">${mediaHtml}</div>
-                            <div class="post-actions-bar">
-                                <button class="btn-like" onclick="toggleLike('post', ${post.id}, this)">
-                                    ❤️ <span class="like-count">0</span> إعجاب
-                                </button>
-                            </div>
-                            <div class="comments">
-                                <div class="comments-list"></div>
-                                <form class="comment-form" onsubmit="submitComment(event, ${post.id})">
-                                    <input type="text" name="content" placeholder="اكتب تعليقاً..." required>
-                                    <button type="submit">تعليق</button>
-                                </form>
-                            </div>
-                        </div>
-                    `;
-                    document.getElementById('postsContainer').insertAdjacentHTML('afterbegin', newPostHTML);
+                    renderPostToDOM(data.post);
                 } else {
-                    showToast(data.error || 'عذراً، فشل نشر الموضوع.', 'error');
+                    showToast(data.error || 'عذراً، فشل النشر.', 'error');
                 }
             } catch (err) {
-                console.error('Post creation error:', err);
-                showToast('حدث خطأ غير متوقع أثناء نشر الموضوع.', 'error');
+                showToast('حدث خطأ أثناء النشر.', 'error');
             }
         });
 
-        // 3. إضافة التعليقات بدون ريفرش
         async function submitComment(event, postId) {
             event.preventDefault();
             const form = event.target;
@@ -845,7 +965,7 @@
                                 <b>${comment.display_name}:</b> ${comment.content}
                                 <div class="comment-footer">
                                     <span style="font-size: 0.72rem; color: #94a3b8; font-weight: 600;">(الآن)</span>
-                                    <button class="btn-like" style="font-size:0.75rem; padding:2px 6px;" onclick="toggleLike('comment', ${comment.id}, this)">
+                                    <button class="btn-like" data-target-type="comment" data-target-id="${comment.id}" style="font-size:0.75rem; padding:2px 6px;" onclick="toggleLike('comment', ${comment.id}, this)">
                                         ❤️ <span class="like-count">0</span>
                                     </button>
                                 </div>
@@ -855,12 +975,9 @@
                     `;
                     const postCard = form.closest('.card');
                     postCard.querySelector('.comments-list').insertAdjacentHTML('beforeend', commentHTML);
-                } else {
-                    showToast(data.error || 'عذراً، تعذر إضافة التعليق.', 'error');
                 }
             } catch (err) {
-                console.error('Comment error:', err);
-                showToast('حدث خطأ في السيرفر أثناء إضافة التعليق.', 'error');
+                showToast('حدث خطأ في إضافة التعليق.', 'error');
             }
         }
     </script>
